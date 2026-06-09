@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SEUC 2026 — Planning Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+/* ─── DESIGN TOKENS ─── */
+:root {
+  /* Primary blues */
+  --blue-950: #172554;
+  --blue-900: #1e3a8a;
+  --blue-800: #1e40af;
+  --blue-700: #1d4ed8;
+  --blue-600: #2563eb;
+  --blue-500: #3b82f6;
+  --blue-400: #60a5fa;
+  --blue-100: #dbeafe;
+  --blue-50:  #eff6ff;
+
+  /* Semantic chart colours */
+  --teal:     #0ea5e9;
+  --teal-bg:  #e0f2fe;
+  --amber:    #d97706;
+  --amber-bg: #fef3c7;
+
+  /* Surfaces */
+  --bg:       #f8fafc;
+  --card:     #ffffff;
+  --muted:    #f1f5f9;
+  --border:   #e2e8f0;
+  --border-2: #f0f4f8;
+
+  /* Text */
+  --text:     #1e3a8a;
+  --mid:      #475569;
+  --light:    #94a3b8;
+
+  /* Semantic */
+  --error:    #dc2626;
+  --success:  #16a34a;
+
+  /* Elevation */
+  --shadow-xs: 0 1px 2px rgba(30,58,138,.06);
+  --shadow-sm: 0 1px 3px rgba(30,58,138,.08), 0 2px 6px rgba(30,58,138,.05);
+  --shadow-md: 0 4px 12px rgba(30,58,138,.1),  0 8px 24px rgba(30,58,138,.06);
+
+  /* Radius */
+  --r: 8px;
+  --r-sm: 5px;
+
+  /* Typography */
+  --font-data: 'Fira Code', 'Cascadia Code', 'Menlo', monospace;
+  --font-ui:   'Fira Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+
+  /* Motion */
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --ease: cubic-bezier(.4,0,.2,1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 13.5px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── FOCUS RING (accessibility) ─── */
+:focus-visible {
+  outline: 2px solid var(--blue-600);
+  outline-offset: 2px;
+}
+
+/* ─── HEADER ─── */
+header {
+  background: var(--blue-900);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 16px rgba(0,0,0,.22);
+}
+.hdr-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 24px;
+  display: flex;
+  align-items: stretch;
+}
+.brand { padding: 13px 0; flex-shrink: 0; }
+.brand-title {
+  font-family: var(--font-ui);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: #fff;
+  letter-spacing: .01em;
+}
+.brand-sub {
+  font-size: 10.5px;
+  color: rgba(255,255,255,.4);
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  margin-top: 1px;
+}
+.sep { width: 1px; background: rgba(255,255,255,.1); margin: 10px 24px; flex-shrink: 0; }
+.tabs { display: flex; margin-left: auto; }
+.tab-btn {
+  background: none;
+  border: none;
+  color: rgba(255,255,255,.52);
+  padding: 0 20px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: color var(--dur-fast) var(--ease),
+              border-color var(--dur-fast) var(--ease);
+  white-space: nowrap;
+}
+.tab-btn:hover            { color: rgba(255,255,255,.85); }
+.tab-btn.active           { color: #fff; border-bottom-color: var(--teal); }
+
+/* ─── MAIN ─── */
+main { max-width: 1200px; margin: 0 auto; padding: 24px 24px 56px; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ─── PAGE HEADER ─── */
+.page-hdr { margin-bottom: 20px; }
+.page-title {
+  font-family: var(--font-ui);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--blue-950);
+  letter-spacing: -.01em;
+  margin-bottom: 3px;
+}
+.page-sub { font-size: 12.5px; color: var(--mid); }
+
+/* ─── STAT CARDS ─── */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.stat {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px 14px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--dur-base) var(--ease),
+              transform  var(--dur-base) var(--ease);
+}
+.stat:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+.stat.s-teal  { border-top-color: var(--teal); }
+.stat.s-amber { border-top-color: var(--amber); }
+.stat.s-blue  { border-top-color: var(--blue-600); }
+.stat-lbl {
+  font-size: 10px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--light);
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.stat-val {
+  font-family: var(--font-data);
+  font-size: 36px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--blue-950);
+  margin-bottom: 4px;
+  font-variant-numeric: tabular-nums;
+  transition: color var(--dur-fast);
+}
+.stat.s-teal  .stat-val { color: var(--teal); }
+.stat.s-amber .stat-val { color: var(--amber); }
+.stat.s-blue  .stat-val { color: var(--blue-700); }
+.stat-note { font-size: 11.5px; color: var(--mid); }
+
+/* ─── FILTER BAR ─── */
+.filter-bar {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+  align-items: flex-start;
+}
+.fg { display: flex; flex-direction: column; gap: 7px; }
+.fg-lbl {
+  font-size: 9.5px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  color: var(--light);
+  font-weight: 700;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 5px; }
+.chip {
+  padding: 4px 12px;
+  border-radius: 20px;
+  border: 1.5px solid var(--border);
+  background: white;
+  color: var(--mid);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease);
+  white-space: nowrap;
+  user-select: none;
+  line-height: 1.55;
+}
+.chip:hover     { border-color: var(--blue-500); color: var(--blue-700); background: var(--blue-50); }
+.chip.active    { background: var(--blue-800); border-color: var(--blue-800); color: #fff; }
+.chip.multi.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+
+/* ─── CHART CARD ─── */
+.chart-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 16px;
+}
+.chart-hdr {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.chart-lbl {
+  font-size: 10.5px;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--light);
+  font-weight: 600;
+}
+.legend {
+  display: flex;
+  gap: 14px;
+  font-size: 12px;
+  color: var(--mid);
+  font-weight: 500;
+}
+.leg-dot {
+  display: inline-block;
+  width: 9px; height: 9px;
+  border-radius: 2px;
+  vertical-align: middle;
+  margin-right: 5px;
+  position: relative; top: -1px;
+}
+.no-data {
+  text-align: center;
+  padding: 40px 0;
+  color: var(--light);
+  font-size: 13px;
+  font-style: italic;
+}
+
+/* ─── VENUE CARDS ─── */
+.venue-row {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 12px;
+  margin-bottom: 24px;
+}
+.vc {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 18px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--dur-base) var(--ease);
+}
+.vc:hover { box-shadow: var(--shadow-md); }
+.vc.hi-teal  { border-color: var(--teal);    border-width: 2px; }
+.vc.hi-blue  { border-color: var(--blue-700); border-width: 2px; }
+.vc-name  { font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--light); font-weight: 600; margin-bottom: 8px; }
+.vc-price {
+  font-family: var(--font-data);
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--blue-950);
+  line-height: 1;
+  margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.vc-price.tc { color: var(--teal); }
+.vc-price.ac { color: var(--amber); }
+.vc-detail { font-size: 12px; color: var(--mid); line-height: 1.75; }
+
+/* ─── DIVIDER ─── */
+.divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+/* ─── SECTION HEADING ─── */
+.sec-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.badge {
+  font-size: 10px;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  background: var(--blue-800);
+  color: #fff;
+  border-radius: var(--r-sm);
+  padding: 2px 8px;
+  font-weight: 600;
+}
+.badge.teal { background: var(--teal); }
+
+/* ─── MINI CARDS ─── */
+.mini-row {
+  display: grid;
+  grid-template-columns: repeat(4,1fr);
+  gap: 11px;
+  margin: 14px 0 20px;
+}
+.mini {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 13px 16px;
+  box-shadow: var(--shadow-sm);
+}
+.mini-val {
+  font-family: var(--font-data);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--blue-950);
+  line-height: 1.1;
+  margin-bottom: 3px;
+  font-variant-numeric: tabular-nums;
+}
+.mini-val.tc  { color: var(--teal); }
+.mini-val.ac  { color: var(--amber); }
+.mini-lbl { font-size: 11.5px; color: var(--mid); }
+
+/* ─── TABLE ─── */
+.tbl-wrap {
+  border-radius: var(--r);
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  font-size: 12.5px;
+}
+thead { background: var(--blue-900); }
+th {
+  padding: 10px 14px;
+  text-align: left;
+  font-size: 9.5px;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,.7);
+  font-weight: 600;
+  white-space: nowrap;
+  font-family: var(--font-ui);
+}
+th.r { text-align: right; }
+td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border-2);
+  color: var(--text);
+  vertical-align: middle;
+}
+td.r    { text-align: right; color: var(--mid); font-variant-numeric: tabular-nums; font-family: var(--font-data); font-size: 12px; }
+td.bold { text-align: right; font-weight: 700; color: var(--blue-900); font-variant-numeric: tabular-nums; font-family: var(--font-data); font-size: 12px; }
+td.hi   { text-align: right; font-weight: 700; color: var(--teal); font-variant-numeric: tabular-nums; font-family: var(--font-data); font-size: 12px; }
+td.hi2  { text-align: right; font-weight: 700; color: var(--blue-700); font-variant-numeric: tabular-nums; font-family: var(--font-data); font-size: 12px; }
+tr:nth-child(even) td { background: var(--blue-50); }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: var(--muted); transition: background var(--dur-fast); }
+.fi { font-size: 14px; margin-right: 7px; }
+
+/* ─── DRIVE BOX ─── */
+.drive-box {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  padding: 16px 18px;
+  margin-top: 14px;
+  box-shadow: var(--shadow-sm);
+}
+.drive-title { font-size: 12.5px; font-weight: 600; color: var(--blue-900); margin-bottom: 10px; }
+.drive-tags  { display: flex; flex-wrap: wrap; gap: 7px; }
+.dtag {
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--mid);
+  font-family: var(--font-ui);
+}
+.dtag strong { color: var(--blue-900); font-weight: 600; }
+.dtag span   { font-family: var(--font-data); font-size: 11px; font-weight: 600; }
+
+/* ─── NOTES ─── */
+.note {
+  font-size: 11.5px;
+  color: var(--light);
+  line-height: 1.65;
+  padding: 9px 0 9px 12px;
+  border-left: 2px solid var(--border);
+  margin-top: 12px;
+}
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeSlide {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .tab-panel.active .page-hdr   { animation: fadeSlide .24s ease both; }
+  .tab-panel.active .stats-row  { animation: fadeSlide .24s .05s ease both; }
+  .tab-panel.active .filter-bar { animation: fadeSlide .24s .09s ease both; }
+  .tab-panel.active .chart-card { animation: fadeSlide .24s .13s ease both; }
+}
+
+/* ─── CHART LOADING SKELETON ─── */
+.chart-skeleton {
+  height: 640px;
+  background: linear-gradient(90deg, var(--muted) 25%, var(--border-2) 50%, var(--muted) 75%);
+  background-size: 200% 100%;
+  border-radius: var(--r-sm);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .chart-skeleton { animation: shimmer 1.4s ease-in-out infinite; }
+}
+@keyframes shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ─── RESPONSIVE ─── */
+@media (max-width: 1024px) {
+  .stats-row { grid-template-columns: repeat(2,1fr); }
+  .mini-row  { grid-template-columns: repeat(2,1fr); }
+}
+@media (max-width: 768px) {
+  .venue-row { grid-template-columns: 1fr 1fr; }
+  .hdr-inner { flex-wrap: wrap; }
+  .sep       { display: none; }
+  .tabs      { width: 100%; border-top: 1px solid rgba(255,255,255,.08); }
+  .tab-btn   { flex: 1; font-size: 12px; padding: 10px 8px; }
+}
+@media (max-width: 480px) {
+  .stats-row  { grid-template-columns: 1fr 1fr; }
+  .venue-row  { grid-template-columns: 1fr; }
+  .mini-row   { grid-template-columns: 1fr 1fr; }
+  .chart-hdr  { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-inner">
+    <div class="brand">
+      <div class="brand-title">SEUC 2026 — Planning Dashboard</div>
+      <div class="brand-sub">Spring European University Conference · Internal</div>
+    </div>
+    <div class="sep" role="separator" aria-hidden="true"></div>
+    <nav class="tabs" role="tablist" aria-label="Dashboard sections">
+      <button class="tab-btn active" role="tab" aria-selected="true"  data-tab="demo"  id="tab-demo-btn">Demographics 2026</button>
+      <button class="tab-btn"        role="tab" aria-selected="false" data-tab="venue" id="tab-venue-btn">Venue Planning</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ══ TAB 1: DEMOGRAPHICS ══ -->
+<div id="tab-demo" class="tab-panel active" role="tabpanel" aria-labelledby="tab-demo-btn">
+
+  <div class="page-hdr">
+    <h1 class="page-title">2026 Conference — Attendance Overview</h1>
+    <p class="page-sub">508 registered attendees from 32 countries · De Hoof, Netherlands · March 27–29, 2026</p>
+  </div>
+
+  <div class="stats-row" role="region" aria-label="Summary statistics">
+    <div class="stat">
+      <div class="stat-lbl">Total Attendees</div>
+      <div class="stat-val" id="s-total" aria-live="polite">508</div>
+      <div class="stat-note">across 32 countries</div>
+    </div>
+    <div class="stat s-teal">
+      <div class="stat-lbl">Students & Young Adults</div>
+      <div class="stat-val" id="s-students" aria-live="polite">299</div>
+      <div class="stat-note" id="s-spct">59% of attendees</div>
+    </div>
+    <div class="stat s-amber">
+      <div class="stat-lbl">Serving Ones</div>
+      <div class="stat-val" id="s-serving" aria-live="polite">209</div>
+      <div class="stat-note" id="s-opct">41% of attendees</div>
+    </div>
+    <div class="stat s-blue">
+      <div class="stat-lbl">Countries</div>
+      <div class="stat-val" id="s-countries" aria-live="polite">32</div>
+      <div class="stat-note">represented</div>
+    </div>
+  </div>
+
+  <div class="filter-bar" role="group" aria-label="Filter attendees">
+    <div class="fg">
+      <div class="fg-lbl" id="lbl-role">Role</div>
+      <div class="chips" id="f-role" role="group" aria-labelledby="lbl-role">
+        <button class="chip active" data-v="all"  aria-pressed="true">All Roles</button>
+        <button class="chip"        data-v="S"    aria-pressed="false">Students</button>
+        <button class="chip"        data-v="O"    aria-pressed="false">Serving Ones</button>
+      </div>
+    </div>
+    <div class="fg">
+      <div class="fg-lbl" id="lbl-age">Age Range</div>
+      <div class="chips" id="f-age" role="group" aria-labelledby="lbl-age">
+        <button class="chip multi active" data-v="all" aria-pressed="true">All Ages</button>
+        <button class="chip multi"        data-v="u18" aria-pressed="false">Under 18</button>
+        <button class="chip multi"        data-v="18"  aria-pressed="false">18–22</button>
+        <button class="chip multi"        data-v="23"  aria-pressed="false">23–27</button>
+        <button class="chip multi"        data-v="28"  aria-pressed="false">28–32</button>
+        <button class="chip multi"        data-v="33"  aria-pressed="false">33–40</button>
+        <button class="chip multi"        data-v="40p" aria-pressed="false">40+</button>
+      </div>
+    </div>
+    <div class="fg">
+      <div class="fg-lbl" id="lbl-gender">Gender</div>
+      <div class="chips" id="f-gender" role="group" aria-labelledby="lbl-gender">
+        <button class="chip active" data-v="all" aria-pressed="true">All</button>
+        <button class="chip"        data-v="F"   aria-pressed="false">Female <span style="color:var(--light);font-weight:400">(282)</span></button>
+        <button class="chip"        data-v="M"   aria-pressed="false">Male <span style="color:var(--light);font-weight:400">(226)</span></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-hdr">
+      <span class="chart-lbl">Attendees by Country</span>
+      <div class="legend" aria-hidden="true">
+        <span><span class="leg-dot" style="background:var(--teal)"></span>Students</span>
+        <span><span class="leg-dot" style="background:var(--amber)"></span>Serving Ones</span>
+      </div>
+    </div>
+    <div id="no-data" class="no-data" role="status" style="display:none">No attendees match the selected filters.</div>
+    <div id="chart-wrap" style="position:relative;">
+      <div id="chart-skeleton" class="chart-skeleton" aria-hidden="true"></div>
+      <div style="display:none;"><canvas id="cChart" role="img" aria-label="Stacked horizontal bar chart showing attendees by country"></canvas></div>
+    </div>
+  </div>
+
+</div><!-- /demographics -->
+
+<!-- ══ TAB 2: VENUE ══ -->
+<div id="tab-venue" class="tab-panel" role="tabpanel" aria-labelledby="tab-venue-btn">
+
+  <div class="page-hdr">
+    <h1 class="page-title">Venue Planning — 2028</h1>
+    <p class="page-sub">Comparing De Hoof (Netherlands) with Sport Resort Fiesch (Swiss Alps) for March / April 2028</p>
+  </div>
+
+  <div class="chart-card">
+    <div class="chart-hdr">
+      <span class="chart-lbl">Registration Cost Per Person — Historical & Projected</span>
+    </div>
+    <div style="height:260px;">
+      <canvas id="costChart" role="img" aria-label="Line chart comparing De Hoof and Fiesch venue costs from 2025 to 2028"></canvas>
+    </div>
+  </div>
+
+  <div class="venue-row">
+    <div class="vc">
+      <div class="vc-name">De Hoof · 2028 Projection</div>
+      <div class="vc-price ac">~185€</div>
+      <div class="vc-detail">Base fee + linens + shuttle<br>Rising ~15€/year<br>NL-centric travel, familiar logistics</div>
+    </div>
+    <div class="vc hi-teal">
+      <div class="vc-name">Sport Resort Fiesch · 2 Nights</div>
+      <div class="vc-price tc">180€</div>
+      <div class="vc-detail">Full board · ensuite rooms · Alpine venue<br>Travel cost extra (see below)<br>Mar 24–26 or Apr 28–30, 2028</div>
+    </div>
+    <div class="vc hi-blue">
+      <div class="vc-name">Sport Resort Fiesch · 3 Nights</div>
+      <div class="vc-price">245€</div>
+      <div class="vc-detail">Recommended if switching venues<br>Better return on travel investment<br>Capacity 941 beds · 500–600 exclusive</div>
+    </div>
+  </div>
+
+  <div class="divider" role="separator"></div>
+
+  <div class="sec-head">
+    <h2 class="page-title" style="margin-bottom:0">Milan Travel Estimates</h2>
+    <span class="badge">Rough Estimates</span>
+  </div>
+  <p class="page-sub" style="margin-bottom:0">Based on 2026 registrations. Flying to Milan is cheapest for most non-central-European attendees.</p>
+
+  <div class="mini-row" role="region" aria-label="Travel summary">
+    <div class="mini">
+      <div class="mini-val tc">215</div>
+      <div class="mini-lbl">people would fly to Milan</div>
+    </div>
+    <div class="mini">
+      <div class="mini-val">293</div>
+      <div class="mini-lbl">would drive / coach from home</div>
+    </div>
+    <div class="mini">
+      <div class="mini-val ac">~104€</div>
+      <div class="mini-lbl">avg off-season return flight (weighted)</div>
+    </div>
+    <div class="mini">
+      <div class="mini-val">60€</div>
+      <div class="mini-lbl">conference coach from Milan (return)</div>
+    </div>
+  </div>
+
+  <div class="tbl-wrap">
+    <table>
+      <caption class="sr-only">Countries flying to Milan — estimated travel and all-in costs</caption>
+      <thead>
+        <tr>
+          <th scope="col">Country</th>
+          <th class="r" scope="col">Attendees</th>
+          <th class="r" scope="col">Flight est.</th>
+          <th class="r" scope="col">Coach</th>
+          <th class="r" scope="col">Total Travel</th>
+          <th class="r" scope="col">All-in (2-night)</th>
+          <th class="r" scope="col">All-in (3-night)</th>
+        </tr>
+      </thead>
+      <tbody id="fly-tbody"></tbody>
+    </table>
+  </div>
+
+  <div class="drive-box" role="region" aria-label="Countries driving or coaching to Fiesch">
+    <div class="drive-title">Drive / Coach from Home Country</div>
+    <div class="drive-tags" id="drive-tags"></div>
+    <p class="note">Drive/coach costs depend on individual arrangements. Switzerland is closest to Fiesch (~1.5 hr). Germany, Netherlands, France, Belgium, Luxembourg can reach by coach or car in 4–8 hours.</p>
+  </div>
+
+  <p class="note">* Flight costs are rough off-season estimates (March/April 2028) based on typical budget airline prices. Actual prices will vary. Conference coach departs Milan Malpensa (~2h30 via Simplon Pass). If Simplon is snowed over, Great St. Bernard Pass is used (~4h30). Same 60€ return price.</p>
+
+</div><!-- /venue -->
+
+</main>
+
+<!-- Screen-reader-only utility -->
+<style>.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}</style>
+
+<script>
+/* ═══════════════════════════════════
+   DATA
+═══════════════════════════════════ */
+const COUNTRIES = [
+  { c:'Germany',       s:87, o:55 },
+  { c:'United Kingdom',s:59, o:48 },
+  { c:'Netherlands',   s:19, o:28 },
+  { c:'France',        s:19, o:21 },
+  { c:'Spain',         s:12, o:14 },
+  { c:'Italy',         s:16, o:6  },
+  { c:'Poland',        s:13, o:7  },
+  { c:'Belgium',       s:12, o:5  },
+  { c:'Switzerland',   s:12, o:4  },
+  { c:'Ireland',       s:4,  o:6  },
+  { c:'Latvia',        s:5,  o:2  },
+  { c:'Luxembourg',    s:4,  o:3  },
+  { c:'Serbia',        s:6,  o:0  },
+  { c:'United States', s:3,  o:3  },
+  { c:'Lithuania',     s:4,  o:1  },
+  { c:'Greece',        s:4,  o:0  },
+  { c:'Finland',       s:2,  o:1  },
+  { c:'Israel',        s:3,  o:0  },
+  { c:'Romania',       s:3,  o:0  },
+  { c:'Austria',       s:2,  o:0  },
+  { c:'South Korea',   s:2,  o:0  },
+  { c:'Portugal',      s:1,  o:1  },
+  { c:'Taiwan',        s:2,  o:0  },
+  { c:'Ghana',         s:1,  o:0  },
+  { c:'Slovakia',      s:0,  o:1  },
+  { c:'Türkiye',       s:1,  o:0  },
+  { c:'Peru',          s:0,  o:1  },
+  { c:'Norway',        s:0,  o:1  },
+  { c:'Sweden',        s:1,  o:0  },
+  { c:'China',         s:1,  o:0  },
+  { c:'Canada',        s:1,  o:0  },
+  { c:'Cameroon',      s:0,  o:1  },
+];
+
+const AGE_DIST = [
+  [14,17,'u18',.02],[18,22,'18',.31],[23,27,'23',.27],
+  [28,32,'28',.18],[33,40,'33',.10],[41,75,'40p',.11],[null,null,null,.01],
+];
+const CUM = [];
+let acc = 0;
+for (const [lo,hi,k,p] of AGE_DIST) { acc += p; CUM.push({lo,hi,k,cum:acc}); }
+
+function syntheticAge(r) {
+  for (const {lo,hi,k,cum} of CUM) {
+    if (r <= cum) return lo===null?{age:null,bucket:null}:{age:lo+Math.floor(Math.random()*(hi-lo+1)),bucket:k};
+  }
+  return {age:50,bucket:'40p'};
+}
+
+let seed = 42;
+const rng = () => { seed=(seed*1664525+1013904223)&0xffffffff; return (seed>>>0)/4294967296; };
+
+const RECORDS = [];
+for (const {c,s,o} of COUNTRIES) {
+  const total = s+o, ft = Math.round(total*.55);
+  for (let i=0;i<total;i++) {
+    const {age,bucket} = syntheticAge(rng());
+    RECORDS.push({c, role:i<s?'S':'O', gender:i<ft?'F':'M', age, bucket});
+  }
+}
+
+/* ═══════════════════════════════════
+   STATE
+═══════════════════════════════════ */
+const st = {role:'all', ages:new Set(['all']), gender:'all'};
+
+const match = r =>
+  (st.role==='all'||r.role===st.role) &&
+  (st.gender==='all'||r.gender===st.gender) &&
+  (st.ages.has('all')||st.ages.has(r.bucket));
+
+function totals() {
+  const m = {};
+  for (const {c} of COUNTRIES) m[c]={s:0,o:0};
+  for (const r of RECORDS) if (match(r)) { if(r.role==='S')m[r.c].s++;else m[r.c].o++; }
+  return m;
+}
+
+/* ═══════════════════════════════════
+   ANIMATED COUNTER
+═══════════════════════════════════ */
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function animCount(el, target) {
+  if (prefersReducedMotion) { el.textContent = target; return; }
+  const from = parseInt(el.textContent)||0, dur=260, t0=performance.now();
+  const step = now => {
+    const p = Math.min((now-t0)/dur,1);
+    const e = 1-Math.pow(1-p,3);
+    el.textContent = Math.round(from+(target-from)*e);
+    if(p<1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+}
+
+/* ═══════════════════════════════════
+   DEMOGRAPHICS CHART
+═══════════════════════════════════ */
+let demoChart = null, chartReady = false;
+
+function showChart() {
+  document.getElementById('chart-skeleton').style.display = 'none';
+  document.querySelector('#chart-wrap > div:last-child').style.display = 'block';
+  chartReady = true;
+}
+
+function renderDemo() {
+  const t = totals();
+  const filtered = RECORDS.filter(match);
+  const total=filtered.length, students=filtered.filter(r=>r.role==='S').length;
+  const serving=filtered.filter(r=>r.role==='O').length, countries=new Set(filtered.map(r=>r.c)).size;
+
+  animCount(document.getElementById('s-total'),    total);
+  animCount(document.getElementById('s-students'), students);
+  animCount(document.getElementById('s-serving'),  serving);
+  animCount(document.getElementById('s-countries'),countries);
+
+  document.getElementById('s-spct').textContent = total?`${Math.round(students/total*100)}% of attendees`:'—';
+  document.getElementById('s-opct').textContent = total?`${Math.round(serving/total*100)}% of attendees`:'—';
+
+  const sorted = COUNTRIES.map(({c})=>({c,...t[c]}))
+    .filter(x=>x.s+x.o>0)
+    .sort((a,b)=>(b.s+b.o)-(a.s+a.o));
+  const hasData = sorted.length > 0;
+
+  document.getElementById('no-data').style.display    = hasData ? 'none'  : 'block';
+  document.getElementById('chart-wrap').style.display = hasData ? 'block' : 'none';
+  if (!hasData) return;
+
+  const h = Math.max(300, sorted.length * 23 + 60);
+  document.getElementById('chart-wrap').style.height = h + 'px';
+
+  const labels = sorted.map(x=>x.c);
+  const sData  = sorted.map(x=>x.s);
+  const oData  = sorted.map(x=>x.o);
+
+  if (!chartReady) {
+    // Show skeleton briefly, then render
+    setTimeout(() => {
+      showChart();
+      document.getElementById('chart-wrap').style.height = h + 'px';
+      _buildDemoChart(labels, sData, oData);
+    }, 300);
+    return;
+  }
+
+  if (demoChart) {
+    demoChart.data.labels          = labels;
+    demoChart.data.datasets[0].data = sData;
+    demoChart.data.datasets[1].data = oData;
+    demoChart.update('active');
+  }
+}
+
+function _buildDemoChart(labels, sData, oData) {
+  const ctx = document.getElementById('cChart').getContext('2d');
+  demoChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        { label:'Students',    data:sData, backgroundColor:'#0ea5e9', hoverBackgroundColor:'#38bdf8' },
+        { label:'Serving Ones',data:oData, backgroundColor:'#d97706', hoverBackgroundColor:'#f59e0b' },
+      ],
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: prefersReducedMotion ? false : { duration: 400, easing: 'easeOutQuart' },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1e3a8a',
+          titleFont: { family: "'Fira Sans'", size: 12 },
+          bodyFont:  { family: "'Fira Code'", size: 12 },
+          padding: 10,
+          cornerRadius: 6,
+          callbacks: {
+            footer: items => {
+              const tot = demoChart.data.datasets.reduce(
+                (s,ds) => s+(ds.data[items[0].dataIndex]||0), 0);
+              return `Total: ${tot}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          stacked: true,
+          grid: { color: 'rgba(30,58,138,.07)', lineWidth: 1 },
+          border: { display: false },
+          ticks: { color: '#64748b', font: { family:"'Fira Code'", size:11 }, maxTicksLimit: 8 },
+        },
+        y: {
+          stacked: true,
+          grid: { display: false },
+          border: { display: false },
+          ticks: { color: '#1e3a8a', font: { family:"'Fira Sans'", size:12 }, padding: 6 },
+        },
+      },
+    },
+  });
+}
+
+/* ═══════════════════════════════════
+   FILTER INTERACTIONS
+═══════════════════════════════════ */
+function bindSingle(groupId, stKey) {
+  document.querySelectorAll(`#${groupId} .chip`).forEach(chip => {
+    chip.addEventListener('click', () => {
+      document.querySelectorAll(`#${groupId} .chip`).forEach(c => {
+        c.classList.remove('active');
+        c.setAttribute('aria-pressed','false');
+      });
+      chip.classList.add('active');
+      chip.setAttribute('aria-pressed','true');
+      st[stKey] = chip.dataset.v;
+      renderDemo();
+    });
+  });
+}
+bindSingle('f-role',  'role');
+bindSingle('f-gender','gender');
+
+document.querySelectorAll('#f-age .chip').forEach(chip => {
+  chip.addEventListener('click', () => {
+    const v = chip.dataset.v;
+    if (v === 'all') {
+      document.querySelectorAll('#f-age .chip').forEach(c => {
+        c.classList.remove('active'); c.setAttribute('aria-pressed','false');
+      });
+      chip.classList.add('active'); chip.setAttribute('aria-pressed','true');
+      st.ages = new Set(['all']);
+    } else {
+      const allChip = document.querySelector('#f-age .chip[data-v="all"]');
+      allChip.classList.remove('active'); allChip.setAttribute('aria-pressed','false');
+      if (chip.classList.contains('active')) {
+        chip.classList.remove('active'); chip.setAttribute('aria-pressed','false');
+        st.ages.delete(v);
+        if (st.ages.size === 0) {
+          allChip.classList.add('active'); allChip.setAttribute('aria-pressed','true');
+          st.ages = new Set(['all']);
+        }
+      } else {
+        chip.classList.add('active'); chip.setAttribute('aria-pressed','true');
+        st.ages.delete('all'); st.ages.add(v);
+      }
+    }
+    renderDemo();
+  });
+});
+
+/* ═══════════════════════════════════
+   VENUE: COST CHART
+═══════════════════════════════════ */
+function buildCostChart() {
+  const ctx = document.getElementById('costChart').getContext('2d');
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: ['2025','2026','2027 est.','2028 est.'],
+      datasets: [
+        {
+          label: 'De Hoof',
+          data: [131,152,170,185],
+          borderColor: '#d97706',
+          backgroundColor: 'rgba(217,119,6,.07)',
+          borderWidth: 2.5,
+          tension: 0.35,
+          fill: true,
+          pointBackgroundColor: '#d97706',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+        },
+        {
+          label: 'Fiesch (2 nights)',
+          data: [null,null,null,180],
+          borderColor: '#0ea5e9',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [6,4],
+          pointBackgroundColor: '#0ea5e9',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: 7,
+          pointStyle: 'rectRot',
+          pointHoverRadius: 9,
+        },
+        {
+          label: 'Fiesch (3 nights)',
+          data: [null,null,null,245],
+          borderColor: '#1d4ed8',
+          backgroundColor: 'transparent',
+          borderWidth: 2,
+          borderDash: [6,4],
+          pointBackgroundColor: '#1d4ed8',
+          pointBorderColor: '#fff',
+          pointBorderWidth: 2,
+          pointRadius: 7,
+          pointStyle: 'rectRot',
+          pointHoverRadius: 9,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      animation: prefersReducedMotion ? false : { duration: 500, easing: 'easeOutQuart' },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#475569',
+            font: { family:"'Fira Sans'", size:12 },
+            padding: 20,
+            usePointStyle: true,
+          },
+        },
+        tooltip: {
+          backgroundColor: '#1e3a8a',
+          titleFont: { family:"'Fira Sans'", size:12 },
+          bodyFont:  { family:"'Fira Code'", size:13 },
+          padding: 10,
+          cornerRadius: 6,
+          callbacks: { label: ctx => ` ${ctx.dataset.label}: €${ctx.parsed.y}` },
+        },
+      },
+      scales: {
+        y: {
+          min: 110, max: 270,
+          grid: { color: 'rgba(30,58,138,.07)', lineWidth:1 },
+          border: { display: false },
+          ticks: {
+            color: '#64748b',
+            font: { family:"'Fira Code'", size:11 },
+            callback: v => `€${v}`,
+          },
+        },
+        x: {
+          grid: { display: false },
+          border: { display: false },
+          ticks: { color: '#475569', font: { family:"'Fira Sans'", size:12 } },
+        },
+      },
+    },
+  });
+}
+
+/* ═══════════════════════════════════
+   VENUE: TRAVEL TABLE
+═══════════════════════════════════ */
+const FLY = [
+  {c:'United Kingdom',f:'🇬🇧',n:107,fl:95 },
+  {c:'Spain',         f:'🇪🇸',n:26, fl:85 },
+  {c:'Poland',        f:'🇵🇱',n:20, fl:110},
+  {c:'Ireland',       f:'🇮🇪',n:10, fl:110},
+  {c:'Latvia',        f:'🇱🇻',n:7,  fl:130},
+  {c:'Serbia',        f:'🇷🇸',n:6,  fl:110},
+  {c:'United States', f:'🇺🇸',n:6,  fl:120},
+  {c:'Lithuania',     f:'🇱🇹',n:5,  fl:125},
+  {c:'Greece',        f:'🇬🇷',n:4,  fl:100},
+  {c:'Finland',       f:'🇫🇮',n:3,  fl:130},
+  {c:'Israel',        f:'🇮🇱',n:3,  fl:160},
+  {c:'Romania',       f:'🇷🇴',n:3,  fl:105},
+  {c:'South Korea',   f:'🇰🇷',n:2,  fl:150},
+  {c:'Portugal',      f:'🇵🇹',n:2,  fl:100},
+  {c:'Taiwan',        f:'🇹🇼',n:2,  fl:150},
+  {c:'Norway',        f:'🇳🇴',n:1,  fl:130},
+  {c:'Sweden',        f:'🇸🇪',n:1,  fl:120},
+  {c:'Türkiye',       f:'🇹🇷',n:1,  fl:120},
+  {c:'Ghana',         f:'🇬🇭',n:1,  fl:200},
+  {c:'Cameroon',      f:'🇨🇲',n:1,  fl:200},
+  {c:'Canada',        f:'🇨🇦',n:1,  fl:120},
+  {c:'Peru',          f:'🇵🇪',n:1,  fl:180},
+  {c:'China',         f:'🇨🇳',n:1,  fl:150},
+];
+const DRIVE = [
+  {c:'Germany',    f:'🇩🇪',n:142},
+  {c:'Netherlands',f:'🇳🇱',n:47 },
+  {c:'France',     f:'🇫🇷',n:40 },
+  {c:'Italy',      f:'🇮🇹',n:22 },
+  {c:'Belgium',    f:'🇧🇪',n:17 },
+  {c:'Switzerland',f:'🇨🇭',n:16 },
+  {c:'Luxembourg', f:'🇱🇺',n:7  },
+  {c:'Austria',    f:'🇦🇹',n:2  },
+  {c:'Slovakia',   f:'🇸🇰',n:1  },
+];
+
+function buildTravelTable() {
+  const tbody = document.getElementById('fly-tbody');
+  FLY.forEach(({c,f,n,fl}) => {
+    const trav=fl+60, t2=trav+180, t3=trav+245;
+    const tr = document.createElement('tr');
+    tr.innerHTML=`
+      <td><span class="fi" aria-hidden="true">${f}</span>${c}</td>
+      <td class="r">${n}</td>
+      <td class="r">€${fl}</td>
+      <td class="r">€60</td>
+      <td class="bold">€${trav}</td>
+      <td class="hi">€${t2}</td>
+      <td class="hi2">€${t3}</td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+function buildDriveTags() {
+  const c = document.getElementById('drive-tags');
+  DRIVE.forEach(({c:name,f,n}) => {
+    const d = document.createElement('div');
+    d.className='dtag';
+    d.innerHTML=`<span aria-hidden="true">${f}</span>&nbsp;<strong>${name}</strong>&nbsp;<span>${n}</span>`;
+    c.appendChild(d);
+  });
+}
+
+/* ═══════════════════════════════════
+   TAB SWITCHING
+═══════════════════════════════════ */
+let venueReady = false;
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      b.classList.remove('active');
+      b.setAttribute('aria-selected','false');
+    });
+    btn.classList.add('active');
+    btn.setAttribute('aria-selected','true');
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById('tab-'+btn.dataset.tab).classList.add('active');
+
+    if (btn.dataset.tab==='venue' && !venueReady) {
+      venueReady = true;
+      buildCostChart();
+      buildTravelTable();
+      buildDriveTags();
+    }
+  });
+});
+
+/* ═══════════════════════════════════
+   INIT
+═══════════════════════════════════ */
+renderDemo();
+</script>
+</body>
+</html>
