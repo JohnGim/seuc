@@ -1,7 +1,10 @@
-# Raw source data — not for public deployment
-data.json
+# Raw source — contains PII, never commit
 seuc26.csv
+data.json
 report.txt
 
 # Claude workspace
 .claude/
+
+# records.json is intentionally tracked (anonymized, no PII)
+# anonymize.py is intentionally tracked (run locally to regenerate records.json)
