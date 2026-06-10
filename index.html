@@ -1280,7 +1280,7 @@ const match = r =>
 function totals() {
   const m = {};
   for (const {c} of COUNTRIES) m[c]={s:0,o:0};
-  for (const r of RECORDS) if (match(r)) { if(r.r==='S')m[r.c].s++;else m[r.c].o++; }
+  for (const r of RECORDS) if (match(r) && m[r.c]) { if(r.r==='S')m[r.c].s++;else m[r.c].o++; }
   return m;
 }
 
