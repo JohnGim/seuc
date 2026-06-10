@@ -773,9 +773,102 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
   .travel-subhdr .sub-count { font-size: 11px; }
   #travel-map { height: 380px !important; }
 }
+
+/* ─── LOGIN OVERLAY ─── */
+#login-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--blue-950);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+#login-overlay.hidden { display: none; }
+.login-card {
+  width: 100%;
+  max-width: 360px;
+  padding: 0 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.login-accent {
+  width: 4px;
+  height: 48px;
+  background: var(--teal);
+  border-radius: 2px;
+  margin-bottom: 28px;
+}
+.login-title {
+  font-size: 28px;
+  font-weight: 300;
+  color: #fff;
+  letter-spacing: .02em;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.login-sub {
+  font-size: 13px;
+  color: rgba(255,255,255,.4);
+  margin-bottom: 36px;
+  text-align: center;
+}
+.login-field {
+  width: 100%;
+  margin-bottom: 12px;
+}
+.login-field input {
+  width: 100%;
+  padding: 13px 16px;
+  background: rgba(255,255,255,.07);
+  border: 1px solid rgba(255,255,255,.15);
+  border-radius: var(--r);
+  color: #fff;
+  font: 500 15px/1 var(--font-ui);
+  letter-spacing: .08em;
+  outline: none;
+  transition: border-color .15s, background .15s;
+}
+.login-field input::placeholder { color: rgba(255,255,255,.3); letter-spacing: .04em; font-weight: 400; }
+.login-field input:focus { border-color: var(--teal); background: rgba(255,255,255,.1); }
+.login-error {
+  font-size: 12px;
+  color: #f87171;
+  text-align: center;
+  min-height: 18px;
+  margin-bottom: 8px;
+}
+.login-btn {
+  width: 100%;
+  padding: 13px;
+  background: var(--teal);
+  border: none;
+  border-radius: var(--r);
+  color: #fff;
+  font: 600 14px/1 var(--font-ui);
+  letter-spacing: .04em;
+  cursor: pointer;
+  transition: background .15s, transform .1s;
+}
+.login-btn:hover  { background: #0891b2; }
+.login-btn:active { transform: scale(.98); }
 </style>
 </head>
 <body>
+
+<div id="login-overlay">
+  <div class="login-card">
+    <div class="login-accent"></div>
+    <div class="login-title">SEUC 2026</div>
+    <div class="login-sub">Planning Dashboard</div>
+    <div class="login-field">
+      <input id="login-pw" type="password" placeholder="Password" autocomplete="current-password" autofocus>
+    </div>
+    <div class="login-error" id="login-err" role="alert" aria-live="polite"></div>
+    <button class="login-btn" id="login-btn">Enter</button>
+  </div>
+</div>
 
 <header>
   <div class="hdr-inner">
@@ -1091,6 +1184,38 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
 <style>.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border-width:0}</style>
 
 <script>
+/* ═══════════════════════════════════
+   AUTH
+═══════════════════════════════════ */
+(function() {
+  const overlay = document.getElementById('login-overlay');
+  const input   = document.getElementById('login-pw');
+  const btn     = document.getElementById('login-btn');
+  const err     = document.getElementById('login-err');
+
+  function unlock() {
+    localStorage.setItem('seuc_auth', '1');
+    overlay.classList.add('hidden');
+  }
+
+  function attempt() {
+    if (input.value === 'seuc26') {
+      unlock();
+    } else {
+      err.textContent = 'Incorrect password.';
+      input.value = '';
+      input.focus();
+    }
+  }
+
+  if (localStorage.getItem('seuc_auth') === '1') {
+    overlay.classList.add('hidden');
+  }
+
+  btn.addEventListener('click', attempt);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') attempt(); });
+})();
+
 /* ═══════════════════════════════════
    DATA
 ═══════════════════════════════════ */
