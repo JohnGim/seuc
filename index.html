@@ -8,6 +8,9 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3/dist/topojson-client.min.js"></script>
 <style>
 /* ─── DESIGN TOKENS ─── */
 :root {
@@ -231,6 +234,9 @@ main { max-width: 1200px; margin: 0 auto; padding: 24px 24px 56px; }
 .chip:hover     { border-color: var(--blue-500); color: var(--blue-700); background: var(--blue-50); }
 .chip.active    { background: var(--blue-800); border-color: var(--blue-800); color: #fff; }
 .chip.multi.active { background: var(--teal); border-color: var(--teal); color: #fff; }
+.chip[style*="--chip-c"].active { background: var(--chip-c); border-color: var(--chip-c); color: #fff; }
+.chip[style*="--chip-c"]::before { content:''; display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--chip-c); margin-right:5px; vertical-align:middle; flex-shrink:0; }
+.chip[style*="--chip-c"].active::before { background:rgba(255,255,255,0.85); }
 
 /* ─── CHART CARD ─── */
 .chart-card {
@@ -398,6 +404,19 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
 .fi { font-size: 14px; margin-right: 7px; }
 
 /* ─── DRIVE BOX ─── */
+/* ── inner travel tabs ── */
+.travel-tabs { display:flex; gap:0; border-bottom:2px solid var(--border); margin-bottom:18px; }
+.travel-tab-btn {
+  padding:9px 20px; border:none; background:none; cursor:pointer;
+  font:600 13px/1 'Fira Sans',sans-serif; color:var(--mid);
+  border-bottom:2px solid transparent; margin-bottom:-2px;
+  transition:color .15s, border-color .15s;
+}
+.travel-tab-btn:hover { color:var(--blue-700); }
+.travel-tab-btn.active { color:var(--blue-900); border-bottom-color:var(--teal); }
+.travel-tab-panel { display:none; }
+.travel-tab-panel.active { display:block; }
+
 .drive-box {
   background: var(--card);
   border: 1px solid var(--border);
@@ -430,6 +449,82 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
   margin-top: 12px;
 }
 
+/* ─── TRAVEL SUB-HEADERS ─── */
+.travel-subhdr {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue-900);
+  margin: 22px 0 10px;
+  padding-bottom: 7px;
+  border-bottom: 2px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.travel-subhdr .sub-count {
+  margin-left: auto;
+  font-family: var(--font-data);
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 2px 9px;
+  color: var(--mid);
+}
+
+/* ─── COACH RENTAL BOX ─── */
+.coach-box {
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: var(--r);
+  padding: 16px 18px;
+  margin-top: 14px;
+}
+.coach-box-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue-900);
+  margin-bottom: 4px;
+}
+.coach-box-sub {
+  font-size: 11.5px;
+  color: var(--mid);
+  margin-bottom: 14px;
+}
+.coach-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.cstat-val {
+  font-family: var(--font-data);
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--amber);
+  font-variant-numeric: tabular-nums;
+}
+.cstat-lbl {
+  font-size: 11px;
+  color: var(--mid);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+/* ─── COMPARE GRID (side-by-side maps) ─── */
+.compare-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 4px;
+}
+.compare-col .chart-hdr { margin-bottom: 8px; padding-bottom: 10px; }
+.compare-col .chart-lbl { font-size: 11px; }
+@media (max-width: 860px) {
+  .compare-grid { grid-template-columns: 1fr; }
+}
+
 /* ─── ANIMATIONS ─── */
 @keyframes fadeSlide {
   from { opacity: 0; transform: translateY(8px); }
@@ -442,9 +537,34 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
   .tab-panel.active .chart-card { animation: fadeSlide .24s .13s ease both; }
 }
 
+/* ─── CHART SCROLL HINT ─── */
+.chart-scroll-hint {
+  display: none; /* hidden on desktop */
+}
+@media (max-width: 900px) {
+  .chart-scroll-hint {
+    display: block;
+    font-size: 11px;
+    color: var(--light);
+    text-align: center;
+    padding: 6px 0 2px;
+    letter-spacing: .03em;
+  }
+}
+
+/* ─── CHART SCROLL CONTAINER ─── */
+@media (max-width: 900px) {
+  #chart-scroll {
+    overflow-y: scroll;
+    max-height: 72vh;
+    border: 1px solid var(--border);
+    border-radius: var(--r-sm);
+  }
+}
+
 /* ─── CHART LOADING SKELETON ─── */
 .chart-skeleton {
-  height: 640px;
+  height: 1620px; /* 32 bars × 48px + 60px padding */
   background: linear-gradient(90deg, var(--muted) 25%, var(--border-2) 50%, var(--muted) 75%);
   background-size: 200% 100%;
   border-radius: var(--r-sm);
@@ -455,6 +575,161 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
 @keyframes shimmer {
   0%   { background-position: 200% 0; }
   100% { background-position: -200% 0; }
+}
+
+/* ─── MAP ─── */
+#travel-map { border-radius: 6px; z-index: 0; }
+
+/* Airport label chips */
+.map-ap {
+  background: var(--blue-800);
+  color: #fff;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: var(--font-data);
+  font-size: 11px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(30,58,138,.45);
+  cursor: default;
+  line-height: 1.4;
+}
+.map-ap.milan { background: #7c3aed; }
+.map-ap.geneva { background: #16a34a; }
+.map-ap.basel  { background: #0ea5e9; }
+
+/* Destination chip */
+.map-dest {
+  background: var(--blue-950);
+  color: #fff;
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  font-weight: 700;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(23,37,84,.55);
+  border: 2px solid #fff;
+  line-height: 1.3;
+  text-align: center;
+}
+.map-dest small {
+  display: block;
+  font-size: 9.5px;
+  font-weight: 400;
+  opacity: .7;
+  margin-top: 1px;
+  font-family: var(--font-ui);
+}
+
+/* Pass label */
+.map-pass {
+  font-family: var(--font-ui);
+  font-size: 9.5px;
+  color: #334155;
+  font-weight: 600;
+  background: rgba(255,255,255,.88);
+  border: 1px solid rgba(0,0,0,.1);
+  border-radius: 3px;
+  padding: 2px 6px;
+  white-space: nowrap;
+  backdrop-filter: blur(2px);
+}
+
+/* Leaflet popup override */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px !important;
+  box-shadow: 0 4px 20px rgba(30,58,138,.22) !important;
+  border: 1px solid var(--border) !important;
+  padding: 0 !important;
+}
+.leaflet-popup-content {
+  margin: 0 !important;
+  min-width: 200px;
+}
+.leaflet-popup-tip { background: white !important; }
+
+/* Flow map tooltip */
+.flow-tooltip {
+  background: #1e3a8a !important;
+  border: none !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,.3) !important;
+  padding: 0 !important;
+}
+.flow-tooltip::before { display:none !important; }
+.flow-tip { padding:10px 14px; display:flex; flex-direction:column; gap:3px; }
+.flow-tip-country { font-family:'Fira Sans',sans-serif; font-weight:700; font-size:13px; color:#fff; }
+.flow-tip-num { font-family:'Fira Code',monospace; font-size:18px; font-weight:700; color:#93c5fd; line-height:1.2; }
+.flow-tip-mode { font-size:11px; color:rgba(255,255,255,.55); text-transform:uppercase; letter-spacing:.06em; margin-top:1px; }
+.mp {
+  padding: 12px 15px;
+  font-family: var(--font-ui);
+}
+.mp-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-bottom: 5px;
+}
+.mp-icon {
+  font-size: 16px;
+  line-height: 1;
+}
+.mp-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--blue-950);
+}
+.mp-via {
+  font-size: 11.5px;
+  color: var(--mid);
+  margin-bottom: 8px;
+  line-height: 1.45;
+}
+.mp-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.mp-pill {
+  background: var(--blue-50);
+  border: 1px solid var(--blue-100);
+  border-radius: 20px;
+  padding: 3px 9px;
+  font-size: 11.5px;
+  font-family: var(--font-data);
+  font-weight: 600;
+  color: var(--blue-800);
+}
+.mp-pill.amber { background: var(--amber-bg); border-color: #fde68a; color: #92400e; }
+
+/* Route legend strip */
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 20px;
+  padding: 10px 16px;
+  background: var(--muted);
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 6px 6px;
+}
+.ml-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--mid);
+  font-family: var(--font-ui);
+}
+.ml-line {
+  width: 26px;
+  height: 3px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.ml-line.dashed {
+  background: repeating-linear-gradient(90deg, currentColor 0, currentColor 5px, transparent 5px, transparent 9px);
 }
 
 /* ─── RESPONSIVE ─── */
@@ -468,12 +743,35 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
   .sep       { display: none; }
   .tabs      { width: 100%; border-top: 1px solid rgba(255,255,255,.08); }
   .tab-btn   { flex: 1; font-size: 12px; padding: 10px 8px; }
+  main       { padding: 16px 14px 48px; }
+  .page-hdr  { margin-bottom: 14px; }
+  .chart-card { padding: 14px 12px; }
+  .filter-bar { padding: 12px 14px; gap: 12px 16px; }
+  .fg         { width: 100%; }
+  .chips      { gap: 6px; }
+  .chip       { padding: 6px 13px; font-size: 12.5px; }
+  .stat-val   { font-size: 28px; }
+  .stat       { padding: 12px 14px 10px; }
+  .coach-stats { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .cstat-val  { font-size: 18px; }
+  .tbl-wrap   { border-radius: var(--r-sm); }
+  .map-legend { gap: 6px 12px; padding: 10px 12px; font-size: 11px; }
+  .divider    { margin: 16px 0; }
 }
 @media (max-width: 480px) {
-  .stats-row  { grid-template-columns: 1fr 1fr; }
+  main        { padding: 12px 10px 40px; }
+  .stats-row  { grid-template-columns: 1fr 1fr; gap: 8px; }
   .venue-row  { grid-template-columns: 1fr; }
   .mini-row   { grid-template-columns: 1fr 1fr; }
-  .chart-hdr  { flex-direction: column; align-items: flex-start; }
+  .chart-hdr  { flex-direction: column; align-items: flex-start; gap: 6px; }
+  .chart-card { padding: 12px 10px; }
+  .filter-bar { padding: 10px 10px; }
+  .chip       { padding: 7px 11px; font-size: 13px; }
+  .stat-val   { font-size: 26px; }
+  .coach-stats { grid-template-columns: 1fr 1fr; }
+  .travel-subhdr { font-size: 12.5px; }
+  .travel-subhdr .sub-count { font-size: 11px; }
+  #travel-map { height: 380px !important; }
 }
 </style>
 </head>
@@ -500,28 +798,28 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
 
   <div class="page-hdr">
     <h1 class="page-title">2026 Conference — Attendance Overview</h1>
-    <p class="page-sub">508 registered attendees from 32 countries · De Hoof, Netherlands · March 27–29, 2026</p>
+    <p class="page-sub">493 registered attendees from 24 countries · De Hoof, Netherlands · March 27–29, 2026</p>
   </div>
 
   <div class="stats-row" role="region" aria-label="Summary statistics">
     <div class="stat">
       <div class="stat-lbl">Total Attendees</div>
-      <div class="stat-val" id="s-total" aria-live="polite">508</div>
-      <div class="stat-note">across 32 countries</div>
+      <div class="stat-val" id="s-total" aria-live="polite">493</div>
+      <div class="stat-note">across 24 countries</div>
     </div>
     <div class="stat s-teal">
       <div class="stat-lbl">Students & Young Adults</div>
-      <div class="stat-val" id="s-students" aria-live="polite">299</div>
+      <div class="stat-val" id="s-students" aria-live="polite">289</div>
       <div class="stat-note" id="s-spct">59% of attendees</div>
     </div>
     <div class="stat s-amber">
       <div class="stat-lbl">Serving Ones</div>
-      <div class="stat-val" id="s-serving" aria-live="polite">209</div>
+      <div class="stat-val" id="s-serving" aria-live="polite">204</div>
       <div class="stat-note" id="s-opct">41% of attendees</div>
     </div>
     <div class="stat s-blue">
       <div class="stat-lbl">Countries</div>
-      <div class="stat-val" id="s-countries" aria-live="polite">32</div>
+      <div class="stat-val" id="s-countries" aria-live="polite">24</div>
       <div class="stat-note">represented</div>
     </div>
   </div>
@@ -538,13 +836,10 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
     <div class="fg">
       <div class="fg-lbl" id="lbl-age">Age Range</div>
       <div class="chips" id="f-age" role="group" aria-labelledby="lbl-age">
-        <button class="chip multi active" data-v="all" aria-pressed="true">All Ages</button>
-        <button class="chip multi"        data-v="u18" aria-pressed="false">Under 18</button>
-        <button class="chip multi"        data-v="18"  aria-pressed="false">18–22</button>
-        <button class="chip multi"        data-v="23"  aria-pressed="false">23–27</button>
-        <button class="chip multi"        data-v="28"  aria-pressed="false">28–32</button>
-        <button class="chip multi"        data-v="33"  aria-pressed="false">33–40</button>
-        <button class="chip multi"        data-v="40p" aria-pressed="false">40+</button>
+        <button class="chip multi active" data-v="all"  aria-pressed="true">All Ages</button>
+        <button class="chip multi"        data-v="u18"  aria-pressed="false">Under 18</button>
+        <button class="chip multi"        data-v="1830" aria-pressed="false">18–30</button>
+        <button class="chip multi"        data-v="30p"  aria-pressed="false">Over 30</button>
       </div>
     </div>
     <div class="fg">
@@ -566,10 +861,29 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
       </div>
     </div>
     <div id="no-data" class="no-data" role="status" style="display:none">No attendees match the selected filters.</div>
-    <div id="chart-wrap" style="position:relative;">
-      <div id="chart-skeleton" class="chart-skeleton" aria-hidden="true"></div>
-      <div style="display:none;"><canvas id="cChart" role="img" aria-label="Stacked horizontal bar chart showing attendees by country"></canvas></div>
+    <div id="chart-scroll">
+      <div id="chart-wrap" style="position:relative;">
+        <div id="chart-skeleton" class="chart-skeleton" aria-hidden="true"></div>
+        <canvas id="cChart" style="display:none;" role="img" aria-label="Stacked horizontal bar chart showing attendees by country"></canvas>
+      </div>
     </div>
+    <p class="chart-scroll-hint" aria-hidden="true">Scroll to see all 24 countries ↓</p>
+  </div>
+
+
+  <!-- ── How attendees arrived ── -->
+  <div class="chart-card" style="margin-top:20px;">
+    <div class="chart-hdr" style="flex-wrap:wrap;gap:10px;">
+      <span class="chart-lbl">HOW ATTENDEES ARRIVED AT DE HOOF</span>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;" id="flow-filter-btns">
+        <button class="chip active" data-mode="all"   aria-pressed="true">All</button>
+        <button class="chip"        data-mode="plane" aria-pressed="false" style="--chip-c:#3b82f6">✈ Plane (145)</button>
+        <button class="chip"        data-mode="train" aria-pressed="false" style="--chip-c:#10b981">🚆 Train (29)</button>
+        <button class="chip"        data-mode="car"   aria-pressed="false" style="--chip-c:#f59e0b">🚗 Car/Coach (281)</button>
+      </div>
+    </div>
+    <p style="font-size:12px;color:var(--mid);margin:0 0 10px;">Arrow thickness is proportional to attendees. Based on registration data (455 responses; 53 unknown). Hover an arrow for details.</p>
+    <div id="flow-map" style="overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:var(--r-sm);"></div>
   </div>
 
 </div><!-- /demographics -->
@@ -612,55 +926,162 @@ tbody tr:hover td { background: var(--muted); transition: background var(--dur-f
   <div class="divider" role="separator"></div>
 
   <div class="sec-head">
-    <h2 class="page-title" style="margin-bottom:0">Milan Travel Estimates</h2>
+    <h2 class="page-title" style="margin-bottom:0">Airport Routes to Fiesch</h2>
+  </div>
+  <p class="page-sub" style="margin-bottom:12px">Airport options from the report — click or tap any route for details. Scroll to zoom.</p>
+
+  <div style="border:1px solid var(--border);border-radius:var(--r);overflow:hidden;box-shadow:var(--shadow-sm);">
+    <div id="travel-map" style="height:500px;" role="img" aria-label="Map showing travel routes from airports to Fiesch"></div>
+    <div class="map-legend" id="map-legend" aria-hidden="true">
+      <div class="ml-item"><span class="ml-line" style="background:#1d4ed8"></span>Zürich → Fiesch (train, ~3h, 220€)</div>
+      <div class="ml-item"><span class="ml-line" style="background:#0ea5e9"></span>Basel → Fiesch (train, ~2.5h, 210–215€)</div>
+      <div class="ml-item"><span class="ml-line" style="background:#16a34a"></span>Geneva → Fiesch (train, ~2.5h, 175€)</div>
+      <div class="ml-item"><span class="ml-line" style="background:#7c3aed"></span>Milan MXP → Fiesch (train via Domodossola, 3h30, 60–150€)</div>
+      <div class="ml-item"><span class="ml-line dashed" style="color:#d97706"></span>Milan MXP → Fiesch (conference coach via Simplon Pass, 2h30, 60€)</div>
+      <div class="ml-item"><span class="ml-line dashed" style="color:#9f1239"></span>Milan MXP → Fiesch (backup coach via Great St. Bernard, 4h30, 60€)</div>
+    </div>
+  </div>
+
+  <div class="divider" role="separator"></div>
+
+  <div class="sec-head">
+    <h2 class="page-title" style="margin-bottom:0">Travel to Fiesch — Estimates per Country</h2>
     <span class="badge">Rough Estimates</span>
   </div>
-  <p class="page-sub" style="margin-bottom:0">Based on 2026 registrations. Flying to Milan is cheapest for most non-central-European attendees.</p>
+  <p class="page-sub" style="margin-bottom:0">Based on 2026 registrations. Three travel modes depending on where people are coming from.</p>
 
-  <div class="mini-row" role="region" aria-label="Travel summary">
+  <div class="mini-row" style="grid-template-columns:repeat(3,1fr)" role="region" aria-label="Travel mode summary">
     <div class="mini">
-      <div class="mini-val tc">215</div>
-      <div class="mini-lbl">people would fly to Milan</div>
+      <div class="mini-val tc">321</div>
+      <div class="mini-lbl">✈ Fly to Milan MXP + conference coach</div>
     </div>
     <div class="mini">
-      <div class="mini-val">293</div>
-      <div class="mini-lbl">would drive / coach from home</div>
+      <div class="mini-val" style="color:var(--success)">102</div>
+      <div class="mini-lbl">🚂 Train direct to Fiesch (via Brig)</div>
     </div>
     <div class="mini">
-      <div class="mini-val ac">~104€</div>
-      <div class="mini-lbl">avg off-season return flight (weighted)</div>
-    </div>
-    <div class="mini">
-      <div class="mini-val">60€</div>
-      <div class="mini-lbl">conference coach from Milan (return)</div>
+      <div class="mini-val">85</div>
+      <div class="mini-lbl">🚗 Drive from home country</div>
     </div>
   </div>
 
-  <div class="tbl-wrap">
-    <table>
-      <caption class="sr-only">Countries flying to Milan — estimated travel and all-in costs</caption>
-      <thead>
-        <tr>
-          <th scope="col">Country</th>
-          <th class="r" scope="col">Attendees</th>
-          <th class="r" scope="col">Flight est.</th>
-          <th class="r" scope="col">Coach</th>
-          <th class="r" scope="col">Total Travel</th>
-          <th class="r" scope="col">All-in (2-night)</th>
-          <th class="r" scope="col">All-in (3-night)</th>
-        </tr>
-      </thead>
-      <tbody id="fly-tbody"></tbody>
-    </table>
+  <!-- travel mode inner tabs -->
+  <div class="travel-tabs" role="tablist" aria-label="Travel mode details">
+    <button class="travel-tab-btn active" data-ttab="fly"   role="tab" aria-selected="true" >✈ Fly (306)</button>
+    <button class="travel-tab-btn"        data-ttab="train" role="tab" aria-selected="false">🚂 Train (102)</button>
+    <button class="travel-tab-btn"        data-ttab="drive" role="tab" aria-selected="false">🚗 Drive (85)</button>
   </div>
 
-  <div class="drive-box" role="region" aria-label="Countries driving or coaching to Fiesch">
-    <div class="drive-title">Drive / Coach from Home Country</div>
-    <div class="drive-tags" id="drive-tags"></div>
-    <p class="note">Drive/coach costs depend on individual arrangements. Switzerland is closest to Fiesch (~1.5 hr). Germany, Netherlands, France, Belgium, Luxembourg can reach by coach or car in 4–8 hours.</p>
+  <!-- ✈ FLY -->
+  <div id="ttab-fly" class="travel-tab-panel active">
+    <p class="page-sub" style="margin-bottom:10px">UK, Ireland, Spain, Netherlands, Poland, and most non-central-European countries. Also ~60 from northern Germany (Hamburg, Berlin, Hannover) where the drive is 8 h+. Average off-season flight ~98€ return; conference coach 60€ return.</p>
+    <div class="tbl-wrap">
+      <table>
+        <caption class="sr-only">Countries flying to Milan MXP — estimated travel and all-in costs</caption>
+        <thead>
+          <tr>
+            <th scope="col">Country</th>
+            <th class="r" scope="col">People</th>
+            <th class="r" scope="col">Flight est.</th>
+            <th class="r" scope="col">+ Coach</th>
+            <th class="r" scope="col">Total travel</th>
+            <th class="r" scope="col">All-in 2-night</th>
+            <th class="r" scope="col">All-in 3-night</th>
+          </tr>
+        </thead>
+        <tbody id="fly-tbody"></tbody>
+      </table>
+    </div>
+    <div class="coach-box" role="region" aria-label="Coach rental cost estimate" style="margin-top:20px">
+      <div class="coach-box-title">🚌 Conference Coach Fleet — Rental Cost Estimate (2028)</div>
+      <div class="coach-box-sub">Transporting 306 flyers from MXP to Fiesch and back · 50-seat coaches via Simplon Pass (SS33), ~200 km / 2h 30m one way</div>
+      <div class="coach-stats">
+        <div><div class="cstat-val">7</div><div class="cstat-lbl">coaches needed<br>(50 seats each)</div></div>
+        <div><div class="cstat-val">~€2,000</div><div class="cstat-lbl">per coach return<br>(est. range €1,500–2,500)</div></div>
+        <div><div class="cstat-val">~€14,000</div><div class="cstat-lbl">total fleet estimate<br>(range €10,500–17,500)</div></div>
+      </div>
+      <p class="note" style="margin-top:4px">Charter rate includes driver, fuel, Italian &amp; Swiss motorway tolls, and cross-border paperwork. At 60€/person × 306 attendees = <strong>€18,360 collected</strong> — roughly €4,360–7,860 margin for admin, driver gratuity, and contingency. Likely arrivals spread over 2 days (4 coaches day 1, 3 coaches day 2). If Simplon Pass is snowed over, reroute via A26/Aosta valley (Great St. Bernard) adds ~2 h.</p>
+    </div>
   </div>
 
-  <p class="note">* Flight costs are rough off-season estimates (March/April 2028) based on typical budget airline prices. Actual prices will vary. Conference coach departs Milan Malpensa (~2h30 via Simplon Pass). If Simplon is snowed over, Great St. Bernard Pass is used (~4h30). Same 60€ return price.</p>
+  <!-- 🚂 TRAIN -->
+  <div id="ttab-train" class="travel-tab-panel">
+    <p class="page-sub" style="margin-bottom:10px">France, Italy, Belgium, Luxembourg, and Switzerland all have direct rail connections through Brig. All prices are <strong>return</strong> (advance booking). Italy is the best deal — Milan Centrale to Fiesch in ~2h, ~€90 return. France is ~€155 return via TGV Lyria. Swiss residents assumed to hold a Halbtax card (~50% off SBB).</p>
+    <div class="tbl-wrap">
+      <table>
+        <caption class="sr-only">Countries taking the train to Fiesch — estimated costs and times</caption>
+        <thead>
+          <tr>
+            <th scope="col">Country</th>
+            <th class="r" scope="col">People</th>
+            <th scope="col">Route</th>
+            <th class="r" scope="col">Train est.</th>
+            <th class="r" scope="col">Journey</th>
+            <th class="r" scope="col">All-in 2-night</th>
+            <th class="r" scope="col">All-in 3-night</th>
+          </tr>
+        </thead>
+        <tbody id="train-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 🚗 DRIVE -->
+  <div id="ttab-drive" class="travel-tab-panel">
+    <div class="drive-box" role="region" aria-label="Countries driving to Fiesch">
+      <div class="drive-title">Southern Germany · Austria · Slovakia</div>
+      <div class="drive-tags" id="drive-tags"></div>
+      <p class="note" style="margin-top:10px">Frankfurt ~5h · Munich ~4h · Stuttgart ~4.5h · Freiburg ~3h. Drive costs depend on individual arrangements (fuel, tolls, car share). Rough petrol+tolls estimate: €50–120 return per car depending on origin.</p>
+    </div>
+  </div>
+
+  <p class="note">* All costs are rough off-season estimates (March/April 2028). Flight prices based on typical budget airline fares. Train prices are <strong>return</strong> fares on advance booking: Italy via Trenitalia/SBB (~€90 rt), France via TGV Lyria (~€155 rt), Belgium via DB/SBB (~€185 rt), Switzerland with Halbtax card (~€95 rt), Luxembourg via DB/SBB (~€200 rt). Brig–Fiesch leg (MGB, 32 min) included in all train estimates. Actual prices will vary significantly. Germany split is estimated: ~60 from northern cities fly, ~82 from Frankfurt/Munich/Stuttgart area drive.</p>
+
+  <div class="divider" role="separator"></div>
+
+  <div class="sec-head">
+    <h2 class="page-title" style="margin-bottom:0">Travel Flow — 2026 De Hoof vs 2028 Fiesch</h2>
+    <span class="badge">Estimated</span>
+  </div>
+  <p class="page-sub" style="margin-bottom:16px">Side-by-side comparison. Left: actual 2026 travel to De Hoof. Right: estimated 2028 travel to Fiesch. Arrow thickness is proportional to people count. Hover for details.</p>
+
+  <div class="compare-grid">
+    <div class="compare-col">
+      <div class="chart-hdr" style="flex-wrap:wrap;gap:8px;">
+        <span class="chart-lbl">2026 DE HOOF — ACTUAL</span>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;" id="flow-venue-2026">
+          <button class="chip active" data-mode="all" aria-pressed="true">All</button>
+          <button class="chip" data-mode="plane" aria-pressed="false" style="--chip-c:#3b82f6">✈ Plane</button>
+          <button class="chip" data-mode="train" aria-pressed="false" style="--chip-c:#10b981">🚆 Train</button>
+          <button class="chip" data-mode="car"   aria-pressed="false" style="--chip-c:#f59e0b">🚗 Car</button>
+        </div>
+      </div>
+      <div id="map-dehoof-venue" style="height:380px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-sm);"></div>
+    </div>
+    <div class="compare-col">
+      <div class="chart-hdr" style="flex-wrap:wrap;gap:8px;">
+        <span class="chart-lbl">2028 FIESCH — ESTIMATED</span>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;" id="flow-venue-2028">
+          <button class="chip active" data-mode="all" aria-pressed="true">All</button>
+          <button class="chip" data-mode="plane" aria-pressed="false" style="--chip-c:#3b82f6">✈ Fly+Coach</button>
+          <button class="chip" data-mode="train" aria-pressed="false" style="--chip-c:#10b981">🚆 Train</button>
+          <button class="chip" data-mode="car"   aria-pressed="false" style="--chip-c:#f59e0b">🚗 Drive</button>
+        </div>
+      </div>
+      <div id="map-fiesch-venue" style="height:380px;border-radius:var(--r);overflow:hidden;border:1px solid var(--border);box-shadow:var(--shadow-sm);"></div>
+    </div>
+  </div>
+
+  <div class="chart-card" style="margin-top:20px;">
+    <div class="chart-hdr">
+      <span class="chart-lbl">ALL-IN COST PER PERSON — DE HOOF 2028 vs FIESCH (TOP 10 COUNTRIES)</span>
+    </div>
+    <p style="font-size:12px;color:var(--mid);margin:0 0 12px;">Registration + estimated return travel. Hover bars for breakdown. De Hoof 2028 travel uses budget estimates for same-era fares.</p>
+    <div style="height:340px;">
+      <canvas id="costCompareChart" role="img" aria-label="Grouped bar chart showing all-in cost per person by country for De Hoof 2028 vs Fiesch 2-night and 3-night"></canvas>
+    </div>
+    <p class="note" style="margin-top:12px;">De Hoof travel estimates: UK/Ireland/Spain/Poland ~85–95€ flight, Germany ~45€ drive, France ~70€ flight/TGV, Belgium ~25€ drive/train, Netherlands ~10€ local, Switzerland ~55€ train. Fiesch travel from tables above. All costs are rough estimates.</p>
+  </div>
 
 </div><!-- /venue -->
 
@@ -687,68 +1108,548 @@ const COUNTRIES = [
   { c:'Latvia',        s:5,  o:2  },
   { c:'Luxembourg',    s:4,  o:3  },
   { c:'Serbia',        s:6,  o:0  },
-  { c:'United States', s:3,  o:3  },
   { c:'Lithuania',     s:4,  o:1  },
   { c:'Greece',        s:4,  o:0  },
   { c:'Finland',       s:2,  o:1  },
   { c:'Israel',        s:3,  o:0  },
   { c:'Romania',       s:3,  o:0  },
   { c:'Austria',       s:2,  o:0  },
-  { c:'South Korea',   s:2,  o:0  },
   { c:'Portugal',      s:1,  o:1  },
-  { c:'Taiwan',        s:2,  o:0  },
-  { c:'Ghana',         s:1,  o:0  },
   { c:'Slovakia',      s:0,  o:1  },
   { c:'Türkiye',       s:1,  o:0  },
-  { c:'Peru',          s:0,  o:1  },
   { c:'Norway',        s:0,  o:1  },
   { c:'Sweden',        s:1,  o:0  },
-  { c:'China',         s:1,  o:0  },
-  { c:'Canada',        s:1,  o:0  },
-  { c:'Cameroon',      s:0,  o:1  },
 ];
 
-const AGE_DIST = [
-  [14,17,'u18',.02],[18,22,'18',.31],[23,27,'23',.27],
-  [28,32,'28',.18],[33,40,'33',.10],[41,75,'40p',.11],[null,null,null,.01],
+// Real attendee records from seuc26.csv — [country, role, gender, age, ageBucket]
+// role: "S"=Student/Young Adult  "O"=Serving One
+// gender: "F"=Female  "M"=Male
+const RECORDS = [
+  ["Germany","O","F",31,"2832"],
+  ["Poland","O","F",32,"2832"],
+  ["Netherlands","S","F",18,"1822"],
+  ["Latvia","S","F",22,"1822"],
+  ["Germany","S","F",22,"1822"],
+  ["Netherlands","S","M",25,"2327"],
+  ["Switzerland","S","F",23,"2327"],
+  ["Poland","S","M",23,"2327"],
+  ["France","O","F",35,"3340"],
+  ["Serbia","S","F",22,"1822"],
+  ["Serbia","S","F",20,"1822"],
+  ["Netherlands","O","F",30,"2832"],
+  ["Austria","S","F",20,"1822"],
+  ["Netherlands","O","M",34,"3340"],
+  ["Germany","S","F",24,"2327"],
+  ["Germany","S","F",28,"2832"],
+  ["United Kingdom","O","F",41,"40p"],
+  ["France","S","F",20,"1822"],
+  ["Latvia","S","M",19,"1822"],
+  ["Germany","S","F",26,"2327"],
+  ["Italy","O","F",null,null],
+  ["Latvia","S","F",21,"1822"],
+  ["Germany","O","F",27,"2327"],
+  ["Germany","O","M",42,"40p"],
+  ["Germany","S","M",20,"1822"],
+  ["Germany","S","F",19,"1822"],
+  ["Germany","S","M",22,"1822"],
+  ["Germany","S","F",21,"1822"],
+  ["United Kingdom","S","F",25,"2327"],
+  ["Germany","S","F",23,"2327"],
+  ["Germany","S","M",25,"2327"],
+  ["Germany","S","F",33,"3340"],
+  ["Spain","O","F",25,"2327"],
+  ["Poland","S","F",20,"1822"],
+  ["Portugal","S","F",25,"2327"],
+  ["Germany","S","M",18,"1822"],
+  ["France","S","F",null,null],
+  ["Poland","S","F",22,"1822"],
+  ["France","S","F",20,"1822"],
+  ["Luxembourg","O","M",42,"40p"],
+  ["Belgium","S","F",20,"1822"],
+  ["Ireland","O","F",28,"2832"],
+  ["United Kingdom","S","F",28,"2832"],
+  ["United Kingdom","O","M",32,"2832"],
+  ["Germany","O","F",29,"2832"],
+  ["Ireland","O","M",29,"2832"],
+  ["Netherlands","S","F",21,"1822"],
+  ["United Kingdom","S","M",19,"1822"],
+  ["United Kingdom","S","F",22,"1822"],
+  ["United Kingdom","O","M",23,"2327"],
+  ["Germany","O","F",66,"40p"],
+  ["Netherlands","O","F",29,"2832"],
+  ["United Kingdom","S","F",21,"1822"],
+  ["United Kingdom","S","F",21,"1822"],
+  ["United Kingdom","O","M",54,"40p"],
+  ["United Kingdom","O","F",52,"40p"],
+  ["United Kingdom","S","M",10,"u18"],
+  ["Netherlands","O","F",47,"40p"],
+  ["Germany","O","M",40,"3340"],
+  ["Poland","S","F",22,"1822"],
+  ["Netherlands","O","M",51,"40p"],
+  ["United Kingdom","O","M",36,"3340"],
+  ["United Kingdom","O","F",30,"2832"],
+  ["Spain","O","M",21,"1822"],
+  ["Netherlands","S","F",29,"2832"],
+  ["France","O","M",42,"40p"],
+  ["Switzerland","O","M",64,"40p"],
+  ["Ireland","O","F",30,"2832"],
+  ["Germany","S","F",25,"2327"],
+  ["Netherlands","S","M",29,"2832"],
+  ["Germany","O","F",27,"2327"],
+  ["Belgium","S","M",23,"2327"],
+  ["Poland","O","F",35,"3340"],
+  ["United Kingdom","S","M",16,"u18"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Switzerland","S","M",18,"1822"],
+  ["Poland","S","F",25,"2327"],
+  ["Netherlands","O","F",52,"40p"],
+  ["Italy","S","F",27,"2327"],
+  ["United Kingdom","O","M",26,"2327"],
+  ["United Kingdom","S","M",25,"2327"],
+  ["United Kingdom","S","M",25,"2327"],
+  ["United Kingdom","S","F",26,"2327"],
+  ["Netherlands","S","F",25,"2327"],
+  ["Germany","O","M",32,"2832"],
+  ["United Kingdom","O","F",30,"2832"],
+  ["Germany","O","F",75,"40p"],
+  ["United Kingdom","S","M",19,"1822"],
+  ["Germany","O","M",18,"1822"],
+  ["Germany","S","F",30,"2832"],
+  ["Netherlands","O","M",58,"40p"],
+  ["France","O","M",31,"2832"],
+  ["France","S","M",23,"2327"],
+  ["Belgium","O","F",67,"40p"],
+  ["Germany","S","M",20,"1822"],
+  ["Luxembourg","O","F",32,"2832"],
+  ["United Kingdom","O","F",41,"40p"],
+  ["Germany","S","M",24,"2327"],
+  ["Germany","S","F",22,"1822"],
+  ["United Kingdom","S","M",19,"1822"],
+  ["Latvia","S","F",20,"1822"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Germany","O","F",31,"2832"],
+  ["Italy","S","M",22,"1822"],
+  ["Switzerland","S","F",18,"1822"],
+  ["Belgium","S","M",23,"2327"],
+  ["United Kingdom","S","M",22,"1822"],
+  ["Belgium","O","F",34,"3340"],
+  ["Netherlands","O","M",52,"40p"],
+  ["Germany","S","M",28,"2832"],
+  ["Italy","S","F",16,"u18"],
+  ["Germany","S","F",23,"2327"],
+  ["France","O","M",38,"3340"],
+  ["United Kingdom","O","M",34,"3340"],
+  ["United Kingdom","O","F",30,"2832"],
+  ["Germany","O","M",28,"2832"],
+  ["United Kingdom","O","M",25,"2327"],
+  ["United Kingdom","O","M",36,"3340"],
+  ["United Kingdom","S","M",19,"1822"],
+  ["Netherlands","O","F",16,"u18"],
+  ["Netherlands","O","F",16,"u18"],
+  ["Germany","O","M",78,"40p"],
+  ["United Kingdom","S","M",37,"3340"],
+  ["Netherlands","S","M",19,"1822"],
+  ["Germany","O","F",33,"3340"],
+  ["United Kingdom","O","M",38,"3340"],
+  ["Italy","O","M",43,"40p"],
+  ["France","O","F",28,"2832"],
+  ["Serbia","S","M",21,"1822"],
+  ["Belgium","S","M",24,"2327"],
+  ["Germany","O","F",30,"2832"],
+  ["Germany","O","M",37,"3340"],
+  ["Belgium","O","F",55,"40p"],
+  ["Italy","O","F",28,"2832"],
+  ["Germany","S","F",18,"1822"],
+  ["Netherlands","S","M",23,"2327"],
+  ["Poland","O","M",39,"3340"],
+  ["Germany","S","F",25,"2327"],
+  ["Ireland","O","M",30,"2832"],
+  ["Ireland","S","M",20,"1822"],
+  ["Germany","O","F",29,"2832"],
+  ["Germany","S","F",22,"1822"],
+  ["United Kingdom","O","F",29,"2832"],
+  ["Ireland","S","F",26,"2327"],
+  ["Finland","S","M",27,"2327"],
+  ["Germany","S","F",27,"2327"],
+  ["Finland","O","M",41,"40p"],
+  ["United Kingdom","S","F",19,"1822"],
+  ["Netherlands","O","F",52,"40p"],
+  ["United Kingdom","S","F",22,"1822"],
+  ["Slovakia","O","F",28,"2832"],
+  ["Spain","S","M",20,"1822"],
+  ["France","O","F",33,"3340"],
+  ["France","S","F",28,"2832"],
+  ["France","O","F",73,"40p"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["United Kingdom","O","M",28,"2832"],
+  ["Spain","O","M",35,"3340"],
+  ["Germany","S","M",23,"2327"],
+  ["Germany","O","F",35,"3340"],
+  ["Germany","S","F",27,"2327"],
+  ["Germany","O","M",62,"40p"],
+  ["United Kingdom","S","M",24,"2327"],
+  ["Poland","S","M",19,"1822"],
+  ["United Kingdom","S","F",22,"1822"],
+  ["Netherlands","O","F",31,"2832"],
+  ["Germany","S","F",23,"2327"],
+  ["Lithuania","S","F",21,"1822"],
+  ["France","O","M",27,"2327"],
+  ["France","O","F",26,"2327"],
+  ["Germany","S","F",22,"1822"],
+  ["Spain","O","F",37,"3340"],
+  ["Germany","S","F",20,"1822"],
+  ["France","O","F",null,null],
+  ["Germany","S","F",25,"2327"],
+  ["Germany","O","F",27,"2327"],
+  ["United Kingdom","O","F",32,"2832"],
+  ["Germany","O","M",79,"40p"],
+  ["Spain","O","M",36,"3340"],
+  ["Poland","S","M",21,"1822"],
+  ["Spain","S","M",26,"2327"],
+  ["Spain","S","F",28,"2832"],
+  ["T\u00fcrkiye","S","M",20,"1822"],
+  ["Germany","O","F",29,"2832"],
+  ["Germany","O","F",28,"2832"],
+  ["Germany","S","M",20,"1822"],
+  ["France","S","F",19,"1822"],
+  ["Spain","O","F",27,"2327"],
+  ["Spain","O","M",30,"2832"],
+  ["Spain","S","F",26,"2327"],
+  ["France","S","F",28,"2832"],
+  ["Germany","O","F",71,"40p"],
+  ["Ireland","S","F",21,"1822"],
+  ["Germany","S","M",28,"2832"],
+  ["Spain","S","F",16,"u18"],
+  ["United Kingdom","O","F",26,"2327"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Spain","S","M",18,"1822"],
+  ["Switzerland","S","F",19,"1822"],
+  ["Germany","S","F",22,"1822"],
+  ["United Kingdom","S","F",22,"1822"],
+  ["Germany","S","M",21,"1822"],
+  ["Germany","S","M",20,"1822"],
+  ["Germany","S","M",28,"2832"],
+  ["Germany","O","F",26,"2327"],
+  ["Lithuania","S","F",22,"1822"],
+  ["United Kingdom","O","F",27,"2327"],
+  ["United Kingdom","S","F",17,"u18"],
+  ["Germany","S","M",20,"1822"],
+  ["Greece","S","F",25,"2327"],
+  ["Greece","S","F",20,"1822"],
+  ["United Kingdom","O","F",32,"2832"],
+  ["Germany","S","M",29,"2832"],
+  ["United Kingdom","S","F",23,"2327"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Ireland","O","F",30,"2832"],
+  ["United Kingdom","S","F",20,"1822"],
+  ["United Kingdom","S","M",18,"1822"],
+  ["Israel","S","M",23,"2327"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Lithuania","O","F",47,"40p"],
+  ["Netherlands","S","M",35,"3340"],
+  ["Italy","O","M",37,"3340"],
+  ["Germany","S","F",28,"2832"],
+  ["Netherlands","S","F",19,"1822"],
+  ["United Kingdom","O","M",26,"2327"],
+  ["Netherlands","O","F",29,"2832"],
+  ["Netherlands","O","F",46,"40p"],
+  ["Netherlands","O","F",61,"40p"],
+  ["Germany","O","F",23,"2327"],
+  ["Germany","O","M",33,"3340"],
+  ["Germany","S","F",37,"3340"],
+  ["Germany","O","F",68,"40p"],
+  ["United Kingdom","O","M",33,"3340"],
+  ["United Kingdom","S","M",21,"1822"],
+  ["United Kingdom","S","F",20,"1822"],
+  ["Netherlands","S","M",28,"2832"],
+  ["Spain","S","M",23,"2327"],
+  ["Germany","S","M",27,"2327"],
+  ["Germany","O","F",33,"3340"],
+  ["France","S","F",26,"2327"],
+  ["Germany","O","M",61,"40p"],
+  ["Netherlands","S","F",30,"2832"],
+  ["Germany","S","F",23,"2327"],
+  ["Germany","S","F",27,"2327"],
+  ["Germany","S","M",18,"1822"],
+  ["Netherlands","S","F",20,"1822"],
+  ["Germany","O","M",71,"40p"],
+  ["Switzerland","O","M",33,"3340"],
+  ["United Kingdom","O","F",26,"2327"],
+  ["Netherlands","O","M",47,"40p"],
+  ["Germany","S","M",23,"2327"],
+  ["Portugal","O","F",35,"3340"],
+  ["Germany","S","F",23,"2327"],
+  ["France","S","F",20,"1822"],
+  ["Germany","S","F",21,"1822"],
+  ["Spain","S","F",26,"2327"],
+  ["United Kingdom","O","F",42,"40p"],
+  ["United Kingdom","S","F",24,"2327"],
+  ["Germany","S","F",24,"2327"],
+  ["Poland","O","M",31,"2832"],
+  ["Netherlands","S","F",21,"1822"],
+  ["Germany","S","F",25,"2327"],
+  ["Germany","S","M",28,"2832"],
+  ["Germany","O","M",52,"40p"],
+  ["Luxembourg","O","F",44,"40p"],
+  ["Spain","O","M",38,"3340"],
+  ["Belgium","O","F",69,"40p"],
+  ["Netherlands","O","M",58,"40p"],
+  ["Germany","O","F",38,"3340"],
+  ["Netherlands","O","M",42,"40p"],
+  ["France","S","F",19,"1822"],
+  ["Netherlands","O","F",30,"2832"],
+  ["Netherlands","O","M",31,"2832"],
+  ["Germany","S","M",36,"3340"],
+  ["Ireland","O","M",28,"2832"],
+  ["Poland","S","F",19,"1822"],
+  ["Germany","S","M",23,"2327"],
+  ["Germany","O","F",27,"2327"],
+  ["Switzerland","O","M",27,"2327"],
+  ["United Kingdom","O","M",36,"3340"],
+  ["Poland","S","M",23,"2327"],
+  ["Poland","S","F",20,"1822"],
+  ["Germany","O","F",36,"3340"],
+  ["Germany","O","M",31,"2832"],
+  ["Spain","S","F",16,"u18"],
+  ["United Kingdom","O","M",24,"2327"],
+  ["France","O","F",null,null],
+  ["Netherlands","O","M",35,"3340"],
+  ["United Kingdom","O","F",26,"2327"],
+  ["France","O","F",27,"2327"],
+  ["United Kingdom","O","F",24,"2327"],
+  ["Netherlands","O","F",24,"2327"],
+  ["Germany","O","F",24,"2327"],
+  ["Poland","O","M",43,"40p"],
+  ["France","S","F",29,"2832"],
+  ["Germany","S","F",22,"1822"],
+  ["Netherlands","O","M",35,"3340"],
+  ["France","S","M",23,"2327"],
+  ["Switzerland","S","M",21,"1822"],
+  ["Switzerland","S","M",34,"3340"],
+  ["France","O","M",44,"40p"],
+  ["France","O","M",47,"40p"],
+  ["France","S","M",18,"1822"],
+  ["Germany","S","F",27,"2327"],
+  ["Germany","O","M",38,"3340"],
+  ["United Kingdom","O","F",25,"2327"],
+  ["Netherlands","S","M",23,"2327"],
+  ["Germany","O","F",63,"40p"],
+  ["Norway","O","M",30,"2832"],
+  ["Poland","O","F",26,"2327"],
+  ["France","S","M",31,"2832"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Italy","S","M",null,null],
+  ["Israel","S","F",21,"1822"],
+  ["United Kingdom","S","M",21,"1822"],
+  ["Netherlands","O","F",57,"40p"],
+  ["United Kingdom","S","M",22,"1822"],
+  ["United Kingdom","S","F",23,"2327"],
+  ["Lithuania","S","F",19,"1822"],
+  ["United Kingdom","O","M",29,"2832"],
+  ["United Kingdom","O","M",24,"2327"],
+  ["Luxembourg","S","M",19,"1822"],
+  ["Germany","S","F",22,"1822"],
+  ["United Kingdom","O","F",62,"40p"],
+  ["France","O","F",51,"40p"],
+  ["Germany","S","F",31,"2832"],
+  ["United Kingdom","S","F",18,"1822"],
+  ["Netherlands","O","F",48,"40p"],
+  ["Poland","S","F",18,"1822"],
+  ["Belgium","O","M",27,"2327"],
+  ["Switzerland","S","F",22,"1822"],
+  ["Germany","O","M",24,"2327"],
+  ["Germany","S","M",31,"2832"],
+  ["France","S","F",35,"3340"],
+  ["Belgium","S","F",20,"1822"],
+  ["Italy","O","F",40,"3340"],
+  ["United Kingdom","S","F",21,"1822"],
+  ["Spain","O","F",50,"40p"],
+  ["Spain","O","M",49,"40p"],
+  ["Netherlands","O","F",53,"40p"],
+  ["France","O","M",30,"2832"],
+  ["France","O","F",46,"40p"],
+  ["Spain","O","F",27,"2327"],
+  ["Germany","S","F",24,"2327"],
+  ["Latvia","O","M",31,"2832"],
+  ["Switzerland","S","M",17,"u18"],
+  ["Switzerland","O","F",33,"3340"],
+  ["Germany","S","M",23,"2327"],
+  ["United Kingdom","S","M",21,"1822"],
+  ["Greece","S","F",23,"2327"],
+  ["Luxembourg","S","M",31,"2832"],
+  ["Luxembourg","S","F",22,"1822"],
+  ["Belgium","S","F",24,"2327"],
+  ["Ireland","S","M",22,"1822"],
+  ["Italy","S","F",24,"2327"],
+  ["United Kingdom","O","F",26,"2327"],
+  ["United Kingdom","S","M",21,"1822"],
+  ["United Kingdom","O","F",27,"2327"],
+  ["Germany","S","F",22,"1822"],
+  ["Germany","O","M",25,"2327"],
+  ["Germany","O","M",29,"2832"],
+  ["Germany","S","F",26,"2327"],
+  ["United Kingdom","O","F",27,"2327"],
+  ["Germany","S","M",22,"1822"],
+  ["Germany","O","M",32,"2832"],
+  ["Romania","S","F",24,"2327"],
+  ["Romania","S","F",18,"1822"],
+  ["Netherlands","O","M",48,"40p"],
+  ["United Kingdom","S","F",34,"3340"],
+  ["Sweden","S","M",26,"2327"],
+  ["Latvia","S","F",22,"1822"],
+  ["Switzerland","S","M",23,"2327"],
+  ["Germany","O","M",45,"40p"],
+  ["Germany","S","M",19,"1822"],
+  ["Italy","O","F",43,"40p"],
+  ["Italy","S","F",24,"2327"],
+  ["France","S","F",22,"1822"],
+  ["Netherlands","S","M",23,"2327"],
+  ["Serbia","S","M",18,"1822"],
+  ["Germany","S","F",21,"1822"],
+  ["Serbia","S","M",19,"1822"],
+  ["Serbia","S","M",18,"1822"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Germany","O","F",34,"3340"],
+  ["Germany","O","M",31,"2832"],
+  ["Germany","S","F",31,"2832"],
+  ["Romania","S","F",17,"u18"],
+  ["Italy","S","M",21,"1822"],
+  ["Germany","S","M",19,"1822"],
+  ["Germany","O","M",30,"2832"],
+  ["Belgium","S","F",28,"2832"],
+  ["Belgium","S","M",20,"1822"],
+  ["Poland","S","M",28,"2832"],
+  ["Germany","S","M",19,"1822"],
+  ["United Kingdom","O","F",51,"40p"],
+  ["United Kingdom","O","F",31,"2832"],
+  ["United Kingdom","O","M",33,"3340"],
+  ["Germany","S","F",21,"1822"],
+  ["Germany","S","M",25,"2327"],
+  ["Germany","S","F",23,"2327"],
+  ["Finland","S","M",21,"1822"],
+  ["Germany","S","F",21,"1822"],
+  ["Spain","S","F",24,"2327"],
+  ["Germany","O","M",30,"2832"],
+  ["United Kingdom","S","F",24,"2327"],
+  ["Spain","S","M",22,"1822"],
+  ["Germany","O","M",27,"2327"],
+  ["France","S","F",31,"2832"],
+  ["Italy","S","F",18,"1822"],
+  ["Germany","S","M",27,"2327"],
+  ["Poland","O","M",29,"2832"],
+  ["France","O","F",28,"2832"],
+  ["Germany","O","F",31,"2832"],
+  ["Germany","S","F",23,"2327"],
+  ["Germany","S","F",26,"2327"],
+  ["Germany","S","F",28,"2832"],
+  ["United Kingdom","S","M",19,"1822"],
+  ["Spain","O","F",27,"2327"],
+  ["Germany","S","F",26,"2327"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Germany","O","F",26,"2327"],
+  ["United Kingdom","S","M",25,"2327"],
+  ["Germany","S","M",28,"2832"],
+  ["Lithuania","S","F",18,"1822"],
+  ["Germany","S","F",20,"1822"],
+  ["Germany","S","F",17,"u18"],
+  ["Germany","S","F",23,"2327"],
+  ["Netherlands","O","M",37,"3340"],
+  ["France","O","F",38,"3340"],
+  ["Belgium","S","M",28,"2832"],
+  ["Germany","O","M",37,"3340"],
+  ["United Kingdom","O","F",26,"2327"],
+  ["Germany","S","M",25,"2327"],
+  ["United Kingdom","O","F",22,"1822"],
+  ["Germany","S","M",26,"2327"],
+  ["France","O","F",28,"2832"],
+  ["Germany","S","M",27,"2327"],
+  ["United Kingdom","S","F",19,"1822"],
+  ["Switzerland","S","F",23,"2327"],
+  ["Greece","S","M",22,"1822"],
+  ["United Kingdom","S","F",23,"2327"],
+  ["Germany","S","M",26,"2327"],
+  ["Switzerland","S","M",20,"1822"],
+  ["United Kingdom","S","M",18,"1822"],
+  ["Germany","S","F",22,"1822"],
+  ["Germany","O","M",30,"2832"],
+  ["United Kingdom","O","M",33,"3340"],
+  ["Israel","S","M",28,"2832"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Italy","S","M",33,"3340"],
+  ["Belgium","S","F",20,"1822"],
+  ["Belgium","S","M",24,"2327"],
+  ["United Kingdom","S","M",21,"1822"],
+  ["United Kingdom","S","F",21,"1822"],
+  ["United Kingdom","O","M",58,"40p"],
+  ["United Kingdom","S","F",18,"1822"],
+  ["Netherlands","S","F",23,"2327"],
+  ["Netherlands","S","F",23,"2327"],
+  ["Switzerland","S","F",23,"2327"],
+  ["Spain","O","M",39,"3340"],
+  ["United Kingdom","O","F",24,"2327"],
+  ["United Kingdom","O","F",28,"2832"],
+  ["Luxembourg","S","M",28,"2832"],
+  ["Poland","S","F",20,"1822"],
+  ["Germany","S","M",27,"2327"],
+  ["Netherlands","S","F",19,"1822"],
+  ["United Kingdom","S","M",22,"1822"],
+  ["France","S","F",34,"3340"],
+  ["Germany","O","M",20,"1822"],
+  ["Austria","S","F",20,"1822"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["Spain","S","M",20,"1822"],
+  ["Spain","O","M",48,"40p"],
+  ["United Kingdom","S","F",21,"1822"],
+  ["United Kingdom","O","F",31,"2832"],
+  ["United Kingdom","S","M",20,"1822"],
+  ["United Kingdom","O","F",36,"3340"],
+  ["United Kingdom","O","M",39,"3340"],
+  ["France","O","F",41,"40p"],
+  ["Germany","O","F",25,"2327"],
+  ["Latvia","O","F",27,"2327"],
+  ["Belgium","S","F",23,"2327"],
+  ["Germany","S","F",21,"1822"],
+  ["France","S","M",26,"2327"],
+  ["Germany","S","F",26,"2327"],
+  ["Italy","S","F",21,"1822"],
+  ["Italy","S","F",35,"3340"],
+  ["Italy","S","M",21,"1822"],
+  ["Italy","S","M",28,"2832"],
+  ["Italy","S","M",19,"1822"],
+  ["Italy","S","F",23,"2327"],
+  ["Italy","S","F",21,"1822"],
 ];
-const CUM = [];
-let acc = 0;
-for (const [lo,hi,k,p] of AGE_DIST) { acc += p; CUM.push({lo,hi,k,cum:acc}); }
-
-function syntheticAge(r) {
-  for (const {lo,hi,k,cum} of CUM) {
-    if (r <= cum) return lo===null?{age:null,bucket:null}:{age:lo+Math.floor(Math.random()*(hi-lo+1)),bucket:k};
-  }
-  return {age:50,bucket:'40p'};
-}
-
-let seed = 42;
-const rng = () => { seed=(seed*1664525+1013904223)&0xffffffff; return (seed>>>0)/4294967296; };
-
-const RECORDS = [];
-for (const {c,s,o} of COUNTRIES) {
-  const total = s+o, ft = Math.round(total*.55);
-  for (let i=0;i<total;i++) {
-    const {age,bucket} = syntheticAge(rng());
-    RECORDS.push({c, role:i<s?'S':'O', gender:i<ft?'F':'M', age, bucket});
-  }
-}
 
 /* ═══════════════════════════════════
    STATE
 ═══════════════════════════════════ */
+const EUROPE = new Set([
+  'Germany','United Kingdom','Netherlands','France','Spain','Italy','Poland',
+  'Belgium','Switzerland','Ireland','Latvia','Luxembourg','Serbia','Lithuania',
+  'Greece','Finland','Romania','Austria','Portugal','Slovakia','Türkiye',
+  'Norway','Sweden','Israel'
+]);
+
 const st = {role:'all', ages:new Set(['all']), gender:'all'};
 
+function ageMatch(age) {
+  if (st.ages.has('all')) return true;
+  if (age === null || age === undefined) return false;
+  if (st.ages.has('u18')  && age < 18) return true;
+  if (st.ages.has('1830') && age >= 18 && age <= 30) return true;
+  if (st.ages.has('30p')  && age > 30) return true;
+  return false;
+}
+
 const match = r =>
-  (st.role==='all'||r.role===st.role) &&
-  (st.gender==='all'||r.gender===st.gender) &&
-  (st.ages.has('all')||st.ages.has(r.bucket));
+  (st.role==='all'||r[1]===st.role) &&
+  (st.gender==='all'||r[2]===st.gender) &&
+  ageMatch(r[3]);
 
 function totals() {
   const m = {};
   for (const {c} of COUNTRIES) m[c]={s:0,o:0};
-  for (const r of RECORDS) if (match(r)) { if(r.role==='S')m[r.c].s++;else m[r.c].o++; }
+  for (const r of RECORDS) if (match(r)) { if(r[1]==='S')m[r[0]].s++;else m[r[0]].o++; }
   return m;
 }
 
@@ -756,6 +1657,7 @@ function totals() {
    ANIMATED COUNTER
 ═══════════════════════════════════ */
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const isMobile = window.innerWidth <= 900;
 
 function animCount(el, target) {
   if (prefersReducedMotion) { el.textContent = target; return; }
@@ -776,15 +1678,15 @@ let demoChart = null, chartReady = false;
 
 function showChart() {
   document.getElementById('chart-skeleton').style.display = 'none';
-  document.querySelector('#chart-wrap > div:last-child').style.display = 'block';
+  document.getElementById('cChart').style.display = 'block';
   chartReady = true;
 }
 
 function renderDemo() {
   const t = totals();
   const filtered = RECORDS.filter(match);
-  const total=filtered.length, students=filtered.filter(r=>r.role==='S').length;
-  const serving=filtered.filter(r=>r.role==='O').length, countries=new Set(filtered.map(r=>r.c)).size;
+  const total=filtered.length, students=filtered.filter(r=>r[1]==='S').length;
+  const serving=filtered.filter(r=>r[1]==='O').length, countries=new Set(filtered.map(r=>r[0])).size;
 
   animCount(document.getElementById('s-total'),    total);
   animCount(document.getElementById('s-students'), students);
@@ -794,61 +1696,110 @@ function renderDemo() {
   document.getElementById('s-spct').textContent = total?`${Math.round(students/total*100)}% of attendees`:'—';
   document.getElementById('s-opct').textContent = total?`${Math.round(serving/total*100)}% of attendees`:'—';
 
-  const sorted = COUNTRIES.map(({c})=>({c,...t[c]}))
-    .filter(x=>x.s+x.o>0)
+  const allRows = COUNTRIES.map(({c})=>({c,...t[c]})).filter(x=>x.s+x.o>0);
+
+  // Merge non-EU countries into one grouped row
+  const chartRows = allRows.filter(x => EUROPE.has(x.c))
     .sort((a,b)=>(b.s+b.o)-(a.s+a.o));
-  const hasData = sorted.length > 0;
+
+  const hasData = chartRows.length > 0;
 
   document.getElementById('no-data').style.display    = hasData ? 'none'  : 'block';
   document.getElementById('chart-wrap').style.display = hasData ? 'block' : 'none';
   if (!hasData) return;
 
-  const h = Math.max(300, sorted.length * 23 + 60);
-  document.getElementById('chart-wrap').style.height = h + 'px';
+  const perBar = 48;
+  const h = Math.max(400, chartRows.length * perBar + 80);
 
-  const labels = sorted.map(x=>x.c);
-  const sData  = sorted.map(x=>x.s);
-  const oData  = sorted.map(x=>x.o);
+  const labels = chartRows.map(x=>x.c);
+  const sData  = chartRows.map(x=>x.s);
+  const oData  = chartRows.map(x=>x.o);
 
   if (!chartReady) {
-    // Show skeleton briefly, then render
     setTimeout(() => {
       showChart();
-      document.getElementById('chart-wrap').style.height = h + 'px';
-      _buildDemoChart(labels, sData, oData);
+      _buildDemoChart(labels, sData, oData, h);
     }, 300);
     return;
   }
 
-  if (demoChart) {
-    demoChart.data.labels          = labels;
-    demoChart.data.datasets[0].data = sData;
-    demoChart.data.datasets[1].data = oData;
-    demoChart.update('active');
-  }
+  if (demoChart) { demoChart.destroy(); demoChart = null; }
+  _buildDemoChart(labels, sData, oData, h);
 }
 
-function _buildDemoChart(labels, sData, oData) {
+function _buildDemoChart(labels, sData, oData, h) {
+  const barThick = 26;
+  const wrap = document.getElementById('chart-wrap');
+  const canvas = document.getElementById('cChart');
+  wrap.style.height = h + 'px';
+  // Explicit pixel dimensions — bypasses Chart.js responsive observer conflicts with scroll container
+  canvas.style.width  = '100%';
+  canvas.style.height = h + 'px';
+  canvas.width  = wrap.offsetWidth || 640;
+  canvas.height = h;
+
+  const rowBgPlugin = {
+    id: 'rowBg',
+    beforeDraw(chart) {
+      const ctx = chart.ctx;
+      const { left, right } = chart.chartArea;
+      chart.data.labels.forEach((_, i) => {
+        if (i % 2 === 0) return;
+        const bar = chart.getDatasetMeta(0).data[i];
+        if (!bar) return;
+        ctx.save();
+        ctx.fillStyle = 'rgba(30,58,138,0.04)';
+        ctx.fillRect(left, bar.y - 22, right - left, 44);
+        ctx.restore();
+      });
+    }
+  };
+
+  const totalLabelsPlugin = {
+    id: 'totalLabels',
+    afterDraw(chart) {
+      const ctx = chart.ctx;
+      ctx.save();
+      ctx.font = `600 11px 'Fira Code', monospace`;
+      ctx.fillStyle = '#64748b';
+      ctx.textBaseline = 'middle';
+      ctx.textAlign = 'left';
+      chart.data.labels.forEach((_, i) => {
+        const v0 = chart.data.datasets[0].data[i] || 0;
+        const v1 = chart.data.datasets[1].data[i] || 0;
+        const total = v0 + v1;
+        if (!total) return;
+        const x = chart.scales.x.getPixelForValue(total) + 7;
+        const bar = chart.getDatasetMeta(v1 > 0 ? 1 : 0).data[i];
+        if (!bar) return;
+        ctx.fillText(total, x, bar.y);
+      });
+      ctx.restore();
+    }
+  };
+
   const ctx = document.getElementById('cChart').getContext('2d');
   demoChart = new Chart(ctx, {
     type: 'bar',
+    plugins: [rowBgPlugin, totalLabelsPlugin],
     data: {
       labels,
       datasets: [
-        { label:'Students',    data:sData, backgroundColor:'#0ea5e9', hoverBackgroundColor:'#38bdf8' },
-        { label:'Serving Ones',data:oData, backgroundColor:'#d97706', hoverBackgroundColor:'#f59e0b' },
+        { label:'Students',    data:sData, backgroundColor:'#0ea5e9', hoverBackgroundColor:'#38bdf8', barThickness: barThick, borderRadius: {topLeft:0,bottomLeft:0,topRight:2,bottomRight:2} },
+        { label:'Serving Ones',data:oData, backgroundColor:'#d97706', hoverBackgroundColor:'#f59e0b', barThickness: barThick, borderRadius: {topLeft:0,bottomLeft:0,topRight:3,bottomRight:3} },
       ],
     },
     options: {
       indexAxis: 'y',
-      responsive: true,
+      responsive: false,
       maintainAspectRatio: false,
       animation: prefersReducedMotion ? false : { duration: 400, easing: 'easeOutQuart' },
+      layout: { padding: { right: 40, top: 4, bottom: 4 } },
       plugins: {
         legend: { display: false },
         tooltip: {
           backgroundColor: '#1e3a8a',
-          titleFont: { family: "'Fira Sans'", size: 12 },
+          titleFont: { family: "'Fira Sans'", size: 13 },
           bodyFont:  { family: "'Fira Code'", size: 12 },
           padding: 10,
           cornerRadius: 6,
@@ -864,15 +1815,20 @@ function _buildDemoChart(labels, sData, oData) {
       scales: {
         x: {
           stacked: true,
-          grid: { color: 'rgba(30,58,138,.07)', lineWidth: 1 },
+          grid: { color: 'rgba(30,58,138,.06)', lineWidth: 1 },
           border: { display: false },
-          ticks: { color: '#64748b', font: { family:"'Fira Code'", size:11 }, maxTicksLimit: 8 },
+          ticks: { color: '#94a3b8', font: { family:"'Fira Code'", size: 11 }, maxTicksLimit: 8 },
         },
         y: {
           stacked: true,
           grid: { display: false },
           border: { display: false },
-          ticks: { color: '#1e3a8a', font: { family:"'Fira Sans'", size:12 }, padding: 6 },
+          afterFit(scale) { scale.width = Math.max(scale.width, 140); },
+          ticks: {
+            color: '#1e293b',
+            font: { family:"'Fira Sans'", size: 13, weight: '500' },
+            padding: 10,
+          },
         },
       },
     },
@@ -1028,49 +1984,51 @@ function buildCostChart() {
 /* ═══════════════════════════════════
    VENUE: TRAVEL TABLE
 ═══════════════════════════════════ */
+// 321 people fly to Milan MXP (incl. ~60 northern Germans + Netherlands)
 const FLY = [
-  {c:'United Kingdom',f:'🇬🇧',n:107,fl:95 },
-  {c:'Spain',         f:'🇪🇸',n:26, fl:85 },
-  {c:'Poland',        f:'🇵🇱',n:20, fl:110},
-  {c:'Ireland',       f:'🇮🇪',n:10, fl:110},
-  {c:'Latvia',        f:'🇱🇻',n:7,  fl:130},
-  {c:'Serbia',        f:'🇷🇸',n:6,  fl:110},
-  {c:'United States', f:'🇺🇸',n:6,  fl:120},
-  {c:'Lithuania',     f:'🇱🇹',n:5,  fl:125},
-  {c:'Greece',        f:'🇬🇷',n:4,  fl:100},
-  {c:'Finland',       f:'🇫🇮',n:3,  fl:130},
-  {c:'Israel',        f:'🇮🇱',n:3,  fl:160},
-  {c:'Romania',       f:'🇷🇴',n:3,  fl:105},
-  {c:'South Korea',   f:'🇰🇷',n:2,  fl:150},
-  {c:'Portugal',      f:'🇵🇹',n:2,  fl:100},
-  {c:'Taiwan',        f:'🇹🇼',n:2,  fl:150},
-  {c:'Norway',        f:'🇳🇴',n:1,  fl:130},
-  {c:'Sweden',        f:'🇸🇪',n:1,  fl:120},
-  {c:'Türkiye',       f:'🇹🇷',n:1,  fl:120},
-  {c:'Ghana',         f:'🇬🇭',n:1,  fl:200},
-  {c:'Cameroon',      f:'🇨🇲',n:1,  fl:200},
-  {c:'Canada',        f:'🇨🇦',n:1,  fl:120},
-  {c:'Peru',          f:'🇵🇪',n:1,  fl:180},
-  {c:'China',         f:'🇨🇳',n:1,  fl:150},
+  {c:'United Kingdom',          f:'🇬🇧',n:107,fl:95 },
+  {c:'Netherlands',             f:'🇳🇱',n:47, fl:80 },
+  {c:'Spain',                   f:'🇪🇸',n:26, fl:85 },
+  {c:'Poland',                  f:'🇵🇱',n:20, fl:110},
+  {c:'Ireland',                 f:'🇮🇪',n:10, fl:110},
+  {c:'Germany (North, est.)',   f:'🇩🇪',n:60, fl:90 },
+  {c:'Latvia',                  f:'🇱🇻',n:7,  fl:130},
+  {c:'Serbia',                  f:'🇷🇸',n:6,  fl:110},
+  {c:'Lithuania',               f:'🇱🇹',n:5,  fl:125},
+  {c:'Greece',                  f:'🇬🇷',n:4,  fl:100},
+  {c:'Finland',                 f:'🇫🇮',n:3,  fl:130},
+  {c:'Israel',                  f:'🇮🇱',n:3,  fl:160},
+  {c:'Romania',                 f:'🇷🇴',n:3,  fl:100},
+  {c:'Portugal',                f:'🇵🇹',n:2,  fl:100},
+  {c:'Norway',                  f:'🇳🇴',n:1,  fl:130},
+  {c:'Sweden',                  f:'🇸🇪',n:1,  fl:120},
+  {c:'Türkiye',                 f:'🇹🇷',n:1,  fl:120},
 ];
+
+// 102 people take the train directly to Fiesch (via Brig)
+// tc = estimated RETURN train fare (advance booking, off-season); dur = journey time from home city
+const TRAIN = [
+  {c:'France',      f:'🇫🇷',n:40,tc:155,dur:'~6h 30m',route:'Paris Gare de Lyon → Geneva or Basel → Brig → Fiesch (2 changes)'},
+  {c:'Italy',       f:'🇮🇹',n:22,tc:90, dur:'~2h',    route:'Milan Centrale → Domodossola → Brig → Fiesch (1–2 changes)'},
+  {c:'Belgium',     f:'🇧🇪',n:17,tc:185,dur:'~4h 30m',route:'Brussels-Midi → Basel → Brig → Fiesch (2 changes)'},
+  {c:'Switzerland', f:'🇨🇭',n:16,tc:95, dur:'~1–2h',  route:'Zürich / Geneva / Bern → Brig → Fiesch (SBB + MGB)'},
+  {c:'Luxembourg',  f:'🇱🇺',n:7, tc:200,dur:'~4h',    route:'Luxembourg City → Basel → Brig → Fiesch (2 changes)'},
+];
+
+// 85 people drive (southern Germany, Austria, Slovakia)
 const DRIVE = [
-  {c:'Germany',    f:'🇩🇪',n:142},
-  {c:'Netherlands',f:'🇳🇱',n:47 },
-  {c:'France',     f:'🇫🇷',n:40 },
-  {c:'Italy',      f:'🇮🇹',n:22 },
-  {c:'Belgium',    f:'🇧🇪',n:17 },
-  {c:'Switzerland',f:'🇨🇭',n:16 },
-  {c:'Luxembourg', f:'🇱🇺',n:7  },
-  {c:'Austria',    f:'🇦🇹',n:2  },
-  {c:'Slovakia',   f:'🇸🇰',n:1  },
+  {c:'Germany (South, est.)',f:'🇩🇪',n:82,note:'Frankfurt · Munich · Stuttgart · ~4–6 h drive'},
+  {c:'Austria',              f:'🇦🇹',n:2, note:'Innsbruck ~3 h · Vienna ~6 h'},
+  {c:'Slovakia',             f:'🇸🇰',n:1, note:'Bratislava ~6 h'},
 ];
 
 function buildTravelTable() {
-  const tbody = document.getElementById('fly-tbody');
+  // Fly table
+  const ftbody = document.getElementById('fly-tbody');
   FLY.forEach(({c,f,n,fl}) => {
     const trav=fl+60, t2=trav+180, t3=trav+245;
-    const tr = document.createElement('tr');
-    tr.innerHTML=`
+    const row = document.createElement('tr');
+    row.innerHTML=`
       <td><span class="fi" aria-hidden="true">${f}</span>${c}</td>
       <td class="r">${n}</td>
       <td class="r">€${fl}</td>
@@ -1078,18 +2036,280 @@ function buildTravelTable() {
       <td class="bold">€${trav}</td>
       <td class="hi">€${t2}</td>
       <td class="hi2">€${t3}</td>`;
-    tbody.appendChild(tr);
+    ftbody.appendChild(row);
+  });
+
+  // Train table
+  const ttbody = document.getElementById('train-tbody');
+  TRAIN.forEach(({c,f,n,tc,dur,route}) => {
+    const t2=tc+180, t3=tc+245;
+    const row = document.createElement('tr');
+    row.innerHTML=`
+      <td><span class="fi" aria-hidden="true">${f}</span>${c}</td>
+      <td class="r">${n}</td>
+      <td style="font-size:11px;color:var(--mid);max-width:220px">${route}</td>
+      <td class="r bold">€${tc}</td>
+      <td class="r" style="font-family:var(--font-data);font-size:11.5px;color:var(--mid)">${dur}</td>
+      <td class="hi">€${t2}</td>
+      <td class="hi2">€${t3}</td>`;
+    ttbody.appendChild(row);
   });
 }
 
 function buildDriveTags() {
   const c = document.getElementById('drive-tags');
-  DRIVE.forEach(({c:name,f,n}) => {
+  DRIVE.forEach(({c:name,f,n,note}) => {
     const d = document.createElement('div');
     d.className='dtag';
-    d.innerHTML=`<span aria-hidden="true">${f}</span>&nbsp;<strong>${name}</strong>&nbsp;<span>${n}</span>`;
+    d.innerHTML=`<span aria-hidden="true">${f}</span>&nbsp;<strong>${name}</strong>&nbsp;<span>${n} people</span>${note ? `<br><small style="color:var(--light);font-size:10.5px">${note}</small>` : ''}`;
     c.appendChild(d);
   });
+}
+
+/* ═══════════════════════════════════
+   VENUE: TRAVEL MAP
+═══════════════════════════════════ */
+function buildTravelMap() {
+  // ── Named waypoints (all real station/pass/junction coordinates) ──────────
+  const FIESCH   = [46.3907,  8.1295];
+  const MOREL    = [46.3567,  8.0479]; // Mörel MGB station
+  const BRIG     = [46.3157,  7.9877]; // Brig Hauptbahnhof
+  const VISP     = [46.2960,  7.8815]; // Visp (Lötschberg tunnel exit)
+  const SIERRE   = [46.2930,  7.5360];
+  const SION     = [46.2278,  7.3598];
+  const RIDDES   = [46.1737,  7.2319]; // Rhône valley kink
+  const MARTIGNY = [46.1003,  7.0723];
+  const STMAURICE= [46.2177,  7.0034];
+  const AIGLE    = [46.3199,  6.9727];
+  const MONTREUX = [46.4320,  6.9110];
+  const VEVEY    = [46.4630,  6.8437];
+  const LAUSANNE = [46.5197,  6.6323];
+  const MORGES   = [46.5116,  6.4997];
+  const NYON     = [46.3830,  6.2382];
+  const GVA_CORNAVIN = [46.2100, 6.1426];
+  const THUN     = [46.7576,  7.6282];
+  const SPIEZ    = [46.6849,  7.6552];
+  const FRUTIGEN = [46.5883,  7.6475]; // Lötschberg Basistunnel N portal
+  const BERN     = [46.9479,  7.4446];
+  const OLTEN    = [47.3521,  7.9037];
+  const AARAU    = [47.3928,  8.0508];
+  const ZUERICH  = [47.3784,  8.5402]; // Zürich HB
+  const DOMO     = [46.1151,  8.2933]; // Domodossola
+  const VARZO    = [46.1975,  8.2517]; // Varzo (SS33 road climb starts)
+  const SIMPLON  = [46.2502,  8.0328]; // Simplon Pass summit (2005 m)
+  const GRAV     = [45.9220,  8.4640]; // Gravellona Toce (Toce valley junction)
+  const VERBANIA = [45.9231,  8.5480]; // Verbania-Pallanza
+  const STRESA   = [45.8905,  8.5342];
+  const ARONA    = [45.7612,  8.5577];
+  const SESTOC   = [45.7263,  8.6329]; // Sesto Calende (S tip Lago Maggiore)
+  const GALLARATE= [45.6607,  8.7946];
+  const AOSTA    = [45.7372,  7.3154];
+  const CHATILLON= [45.7480,  7.6197]; // Aosta valley midpoint
+  const PSM      = [45.5970,  7.7972]; // Pont-Saint-Martin
+  const IVREA    = [45.4660,  7.8733];
+  const GSBP     = [45.8686,  7.1706]; // Grand-Saint-Bernard Pass (2469 m)
+  const BSP_SWISS= [45.9460,  7.1730]; // Bourg-Saint-Pierre (Swiss side descent)
+  const ORSIER   = [46.0280,  7.1500]; // Orsières
+  const LIESTAL  = [47.4845,  7.7318]; // Basel → Olten intermediate
+
+  const AIRPORTS = [
+    { id:'ZRH', name:'Zürich Airport',    pos:[47.4647, 8.5492], cls:'map-ap' },
+    { id:'BSL', name:'Basel EuroAirport', pos:[47.5896, 7.5292], cls:'map-ap basel' },
+    { id:'GVA', name:'Geneva Airport',    pos:[46.2381, 6.1089], cls:'map-ap geneva' },
+    { id:'MXP', name:'Milan Malpensa',    pos:[45.6306, 8.7281], cls:'map-ap milan' },
+  ];
+
+  const ROUTES = [
+    // ── ZRH: Zürich Airprt → Dietikon → Aarau → Olten → Bern → Thun →
+    //        Spiez → Frutigen → (Lötschberg Basistunnel) → Visp → Brig → Mörel → Fiesch
+    {
+      id:'zrh', label:'Zürich (ZRH) → Fiesch',
+      mode:'train', icon:'🚂', color:'#1d4ed8', dash:false, weight:3.5,
+      duration:'~3 hr', cost:'220€ return',
+      via:'SBB: Zürich → Olten → Bern → Spiez → Lötschberg tunnel → Visp → Brig',
+      note:'Lötschberg Basistunnel (34 km underground, Frutigen → Visp). Car hire at ZRH also possible.',
+      pts:[
+        [47.4647,8.5492], ZUERICH,
+        [47.4033,8.4020], // Dietikon
+        AARAU, OLTEN,
+        [47.060, 7.560],  // Burgdorf area
+        BERN, THUN, SPIEZ, FRUTIGEN,
+        VISP, BRIG, MOREL, FIESCH,
+      ],
+    },
+    // ── BSL: Basel SBB → Liestal → Olten → (merge ZRH route) → … → Fiesch
+    {
+      id:'bsl', label:'Basel EuroAirport (BSL) → Fiesch',
+      mode:'train', icon:'🚂', color:'#0ea5e9', dash:false, weight:3.5,
+      duration:'~2 hr 30 min', cost:'210–215€ return',
+      via:'SBB: Basel SBB → Liestal → Olten → Bern → Lötschberg tunnel → Visp → Brig',
+      note:'Merges with Zürich line at Olten. Car hire at Basel EuroAirport also possible.',
+      pts:[
+        [47.5478,7.5891], // Basel SBB
+        LIESTAL, OLTEN,
+        [47.060, 7.560],
+        BERN, THUN, SPIEZ, FRUTIGEN,
+        VISP, BRIG, MOREL, FIESCH,
+      ],
+    },
+    // ── GVA: Geneva → Cornavin → Nyon → Morges → Lausanne → Vevey →
+    //        Montreux → Aigle → St-Maurice → Martigny → Riddes → Sion →
+    //        Sierre → Visp → Brig → Mörel → Fiesch  (Rhône Valley line)
+    {
+      id:'gva', label:'Geneva (GVA) → Fiesch',
+      mode:'train', icon:'🚂', color:'#16a34a', dash:false, weight:3.5,
+      duration:'~2 hr 30 min', cost:'175€ return',
+      via:'SBB: Geneva → Lausanne → Rhône Valley → Martigny → Sion → Visp → Brig',
+      note:'Cheapest Swiss airport. Follows the north shore of Lac Léman then the entire Rhône Valley.',
+      pts:[
+        [46.2381,6.1089], GVA_CORNAVIN,
+        NYON, MORGES, LAUSANNE,
+        VEVEY, MONTREUX, AIGLE, STMAURICE, MARTIGNY,
+        RIDDES, SION, SIERRE,
+        VISP, BRIG, MOREL, FIESCH,
+      ],
+    },
+    // ── MXP-train: MXP → Gallarate → Sesto Calende → shore of Lago Maggiore →
+    //              Gravellona Toce → Domodossola → (Simplon Tunnel, 20 km) → Brig → Fiesch
+    {
+      id:'mxp-train', label:'Milan Malpensa (MXP) → Fiesch',
+      mode:'train', icon:'🚂', color:'#7c3aed', dash:false, weight:3.5,
+      duration:'3 hr 30 min', cost:'60–150€ return',
+      via:'Train: MXP → Gallarate → Lago Maggiore west shore → Domodossola → Simplon Tunnel → Brig',
+      note:'Simplon Tunnel (19.8 km underground, Iselle → Brig). The cheapest individual option at ~30–75€ one-way.',
+      pts:[
+        [45.6306,8.7281], GALLARATE, SESTOC,
+        ARONA, STRESA, VERBANIA, GRAV,
+        DOMO,
+        BRIG, MOREL, FIESCH, // tunnel section: Domo → Brig is underground
+      ],
+    },
+    // ── MXP-coach: same road as above to Domodossola, then SS33 climbs over
+    //              Simplon Pass (not through the tunnel) → Brig → Fiesch
+    {
+      id:'mxp-coach', label:'Milan Malpensa (MXP) → Fiesch (coach)',
+      mode:'coach', icon:'🚌', color:'#d97706', dash:'8,5', weight:3,
+      duration:'2 hr 30 min', cost:'60€ return (fleet hire)',
+      via:'Conference coach: MXP → SS33 alongside Lago Maggiore → Domodossola → Simplon Pass road (2005 m) → Brig',
+      note:'Road goes OVER the pass, not through the tunnel — more scenic but weather-dependent. Fastest Milan option.',
+      pts:[
+        [45.6306,8.7281], SESTOC,
+        ARONA, STRESA, VERBANIA, GRAV,
+        DOMO, VARZO,
+        [46.2180, 8.1700], // mid-climb on SS33
+        SIMPLON,
+        [46.2800, 8.0120], // Swiss-side descent toward Brig
+        BRIG, MOREL, FIESCH,
+      ],
+    },
+    // ── MXP-gsbp backup: MXP → highways west across Po plain → Ivrea →
+    //                    Aosta Valley (A5/E25) → Grand-Saint-Bernard Pass →
+    //                    Orsières → Martigny → Rhône Valley → Brig → Fiesch
+    {
+      id:'mxp-gsbp', label:'Milan Malpensa (MXP) → Fiesch (backup)',
+      mode:'coach-alt', icon:'🚌', color:'#9f1239', dash:'4,8', weight:2.5,
+      duration:'4 hr 30 min', cost:'60€ return (fleet hire)',
+      via:'Backup coach: MXP → A4 west → Ivrea → Aosta Valley → Grand-Saint-Bernard Pass → Martigny → Rhône Valley',
+      note:'Used if Simplon Pass is snow-closed. Grand-St-Bernard tunnel (5.8 km) is open year-round.',
+      pts:[
+        [45.6306,8.7281],
+        [45.5800, 8.5000], // SW on highway toward A4
+        [45.4600, 8.1500], // A4 motorway near Novara
+        IVREA, PSM, CHATILLON, AOSTA,
+        [45.8000, 7.2300], // road north toward pass
+        GSBP,
+        BSP_SWISS, ORSIER,
+        MARTIGNY, RIDDES, SION, SIERRE,
+        VISP, BRIG, MOREL, FIESCH,
+      ],
+    },
+  ];
+
+  // Init map — no scroll zoom to avoid page zoom hijack
+  const map = L.map('travel-map', {
+    center: [46.30, 7.90],
+    zoom: 7,
+    scrollWheelZoom: false,
+    zoomControl: true,
+  });
+
+  // CartoDB Voyager tiles — clean, terrain visible, no API key
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+    attribution: '© <a href="https://openstreetmap.org">OpenStreetMap</a> © <a href="https://carto.com">CARTO</a>',
+    subdomains: 'abcd',
+    maxZoom: 14,
+  }).addTo(map);
+
+  // Enable scroll zoom only after clicking the map
+  map.getContainer().addEventListener('click', () => map.scrollWheelZoom.enable(), {once:true});
+
+  // Draw routes (back to front — backup last so it renders cleanest)
+  ROUTES.forEach(r => {
+    const line = L.polyline(r.pts, {
+      color: r.color,
+      weight: r.weight,
+      opacity: 0.82,
+      dashArray: r.dash || null,
+      lineJoin: 'round',
+      lineCap: 'round',
+    }).addTo(map);
+
+    const modeLabel = r.mode === 'train' ? 'Train' : r.mode === 'coach-alt' ? 'Backup Coach' : 'Conference Coach';
+    const pillClass = r.mode !== 'train' ? 'amber' : '';
+
+    line.bindPopup(`
+      <div class="mp">
+        <div class="mp-head">
+          <span class="mp-icon">${r.icon}</span>
+          <span class="mp-name">${r.label}</span>
+        </div>
+        <div class="mp-via">${r.via}</div>
+        <div class="mp-pills">
+          <span class="mp-pill">${modeLabel}</span>
+          <span class="mp-pill ${pillClass}">⏱ ${r.duration}</span>
+          <span class="mp-pill ${pillClass}">💶 ${r.cost}</span>
+        </div>
+        ${r.note ? `<div class="mp-via" style="margin-top:7px;font-style:italic;">${r.note}</div>` : ''}
+      </div>
+    `, { maxWidth: 280 });
+
+    line.on('mouseover', () => line.setStyle({ weight: r.weight + 2, opacity: 1 }));
+    line.on('mouseout',  () => line.setStyle({ weight: r.weight,     opacity: 0.82 }));
+  });
+
+  // Airport markers
+  AIRPORTS.forEach(ap => {
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="${ap.cls}">✈ ${ap.id}</div>`,
+      iconSize: [52, 22],
+      iconAnchor: [26, 11],
+      popupAnchor: [0, -14],
+    });
+    L.marker(ap.pos, { icon, title: ap.name }).addTo(map)
+      .bindTooltip(ap.name, { direction:'top', offset:[0,-4], className:'leaflet-tooltip' });
+  });
+
+  // Fiesch destination marker
+  const destIcon = L.divIcon({
+    className: '',
+    html: `<div class="map-dest">⛰ Fiesch<small>Sport Resort · CH-3984</small></div>`,
+    iconSize: [100, 36],
+    iconAnchor: [50, 18],
+    popupAnchor: [0, -20],
+  });
+  L.marker(FIESCH, { icon: destIcon, zIndexOffset: 1000, title: 'Sport Resort Fiesch' }).addTo(map)
+    .bindTooltip('Feriendorf 1, CH-3984 Fiesch', { direction:'right', offset:[8,0] });
+
+  // Pass labels
+  const passIcon = (label) => L.divIcon({
+    className: '',
+    html: `<div class="map-pass">${label}</div>`,
+    iconSize: [null, null],
+    iconAnchor: [0, 0],
+  });
+  L.marker(SIMPLON, { icon: passIcon('Simplon Pass 2005 m'),              interactive: false }).addTo(map);
+  L.marker(GSBP,    { icon: passIcon('Grand-Saint-Bernard Pass 2469 m'), interactive: false }).addTo(map);
 }
 
 /* ═══════════════════════════════════
@@ -1111,16 +2331,564 @@ document.querySelectorAll('.tab-btn').forEach(btn => {
     if (btn.dataset.tab==='venue' && !venueReady) {
       venueReady = true;
       buildCostChart();
+      buildTravelMap();
       buildTravelTable();
       buildDriveTags();
+      buildVenueMaps();
     }
   });
 });
 
 /* ═══════════════════════════════════
+   ARRIVAL FLOW MAP — SVG (2026 – De Hoof)
+═══════════════════════════════════ */
+function buildFlowMap() {
+  const mapEl = document.getElementById('flow-map');
+  mapEl.style.height = '460px';
+  mapEl.style.borderRadius = '8px';
+  mapEl.style.overflow = 'hidden';
+
+  if (window._flowLeaflet) { window._flowLeaflet.remove(); window._flowLeaflet = null; }
+
+  const map = L.map(mapEl, { center:[52,10], zoom:4, zoomControl:true, attributionControl:true });
+  window._flowLeaflet = map;
+
+  // Plain ocean background, no tiles
+  map.getContainer().style.background = '#c9dce8';
+
+  // Country borders pane — sits below the overlayPane (z 400) where polylines live
+  map.createPane('countries');
+  map.getPane('countries').style.zIndex = 250;
+  map.getPane('countries').style.pointerEvents = 'none';
+
+  // Country-only borders from Natural Earth 110m (no sub-national regions)
+  fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+    .then(r => r.json())
+    .then(world => {
+      L.geoJSON(topojson.feature(world, world.objects.countries), {
+        pane: 'countries',
+        style: { fillColor:'#dce8f0', fillOpacity:1, color:'#8aafc0', weight:0.8 },
+        interactive: false,
+      }).addTo(map);
+    });
+
+  const DH = [51.456, 5.960]; // De Hoof, Horst aan de Maas
+
+  const LATLNG = {
+    'Germany':        [51.2,  10.5],
+    'United Kingdom': [54.5,  -2.5],
+    'Netherlands':    [52.2,   5.3],
+    'France':         [46.6,   2.4],
+    'Spain':          [40.4,  -3.7],
+    'Italy':          [42.5,  12.5],
+    'Poland':         [52.1,  19.4],
+    'Belgium':        [50.5,   4.5],
+    'Switzerland':    [46.8,   8.2],
+    'Ireland':        [53.2,  -8.2],
+    'Latvia':         [56.9,  24.6],
+    'Luxembourg':     [49.8,   6.1],
+    'Serbia':         [44.0,  21.0],
+    'Lithuania':      [55.2,  24.0],
+    'Greece':         [39.1,  22.0],
+    'Finland':        [64.0,  26.0],
+    'Romania':        [45.9,  24.9],
+    'Austria':        [47.5,  14.5],
+    'Portugal':       [39.4,  -8.2],
+    'Slovakia':       [48.7,  19.7],
+    'Türkiye':        [39.0,  35.0],
+    'Norway':         [60.5,   8.5],
+    'Sweden':         [59.3,  17.5],
+  };
+
+  const TRAVEL = {
+    plane: [
+      {c:'United Kingdom',n:67},{c:'Poland',n:19},{c:'Spain',n:16},{c:'Italy',n:14},
+      {c:'Latvia',n:7},{c:'Serbia',n:4},{c:'Lithuania',n:4},{c:'Greece',n:3},
+      {c:'Portugal',n:2},{c:'Finland',n:1},{c:'Slovakia',n:1},
+      {c:'Norway',n:1},{c:'Switzerland',n:1},{c:'Ireland',n:1},{c:'Luxembourg',n:1},
+    ],
+    train: [
+      {c:'Germany',n:10},{c:'Netherlands',n:6},{c:'United Kingdom',n:5},
+      {c:'Spain',n:2},{c:'France',n:1},{c:'Greece',n:1},{c:'Ireland',n:1},
+    ],
+    car: [
+      {c:'Germany',n:108},{c:'Netherlands',n:39},{c:'United Kingdom',n:32},
+      {c:'France',n:26},{c:'Belgium',n:17},{c:'Switzerland',n:13},{c:'Ireland',n:8},
+      {c:'Spain',n:8},{c:'Italy',n:6},{c:'Luxembourg',n:6},
+      {c:'Romania',n:3},{c:'Finland',n:2},
+      {c:'Austria',n:1},{c:'Lithuania',n:1},{c:'Serbia',n:1},{c:'Sweden',n:1},{c:'Türkiye',n:1},
+    ],
+  };
+
+  const COLORS   = { plane:'#3b82f6', train:'#10b981', car:'#f59e0b' };
+  const H_COLORS = { plane:'#60a5fa', train:'#34d399', car:'#fbbf24' };
+  const M_LABEL  = { plane:'✈ Plane', train:'🚆 Train', car:'🚗 Car / Coach' };
+  const MODE_ORDER = { plane:0, train:1, car:2 };
+  const CURVE_K  = 0.2;
+  const LINE_GAP_PX = 8; // screen pixels between parallel lines
+  const calcW = n => Math.pow(n, 0.6);
+
+  function bezierPts(from, to, k, steps=32) {
+    const [lat1,lng1]=from, [lat2,lng2]=to;
+    const mx=(lng1+lng2)/2, my=(lat1+lat2)/2;
+    const dx=lng2-lng1, dy=lat2-lat1;
+    const len=Math.sqrt(dx*dx+dy*dy)||1;
+    const cx=mx-dy/len*len*k, cy=my+dx/len*len*k;
+    const pts=[];
+    for(let i=0;i<=steps;i++){
+      const t=i/steps, u=1-t;
+      pts.push([u*u*lat1+2*u*t*cy+t*t*lat2, u*u*lng1+2*u*t*cx+t*t*lng2]);
+    }
+    return pts;
+  }
+
+  let tip = document.getElementById('flow-svgtip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'flow-svgtip'; tip.className = 'flow-tooltip';
+    tip.style.cssText = 'position:fixed;pointer-events:none;display:none;z-index:9999;';
+    document.body.appendChild(tip);
+  }
+
+  const modeLayers = {};
+  ['plane','train','car'].forEach(m => { modeLayers[m] = L.layerGroup().addTo(map); });
+
+  const byCountry = {};
+  Object.entries(TRAVEL).forEach(([mode, list]) => {
+    list.forEach(({c, n}) => {
+      if (!byCountry[c]) byCountry[c] = [];
+      byCountry[c].push({mode, n});
+    });
+  });
+  Object.values(byCountry).forEach(arr => arr.sort((a,b) => MODE_ORDER[a.mode] - MODE_ORDER[b.mode]));
+
+  function drawLines() {
+    Object.values(modeLayers).forEach(g => g.clearLayers());
+
+    Object.entries(byCountry).forEach(([c, modes]) => {
+      const from = LATLNG[c]; if (!from) return;
+      const count = modes.length;
+
+      // Perpendicular offset in screen pixels, converted back to lat/lng
+      const fromPx = map.latLngToLayerPoint(L.latLng(from));
+      const toPx   = map.latLngToLayerPoint(L.latLng(DH));
+      const dx = toPx.x-fromPx.x, dy = toPx.y-fromPx.y;
+      const len = Math.sqrt(dx*dx+dy*dy)||1;
+      const perpX = -dy/len, perpY = dx/len;
+
+      modes.forEach(({mode, n}, i) => {
+        const col=COLORS[mode], hcol=H_COLORS[mode];
+        const w = calcW(n);
+        const offsetIdx = i - (count-1)/2;
+        const oFromPx = L.point(fromPx.x + perpX*LINE_GAP_PX*offsetIdx, fromPx.y + perpY*LINE_GAP_PX*offsetIdx);
+        const oFrom = map.layerPointToLatLng(oFromPx);
+
+        const pts = bezierPts([oFrom.lat, oFrom.lng], DH, CURVE_K);
+        const line = L.polyline(pts, { color:col, weight:w, opacity:0.65, smoothFactor:1 });
+        const hit  = L.polyline(pts, { color:'transparent', weight:Math.max(w+10,18), opacity:0 });
+
+        hit.on('mouseover', e => {
+          line.setStyle({ color:hcol, weight:w+4, opacity:1 });
+          tip.innerHTML = '<div class="flow-tip"><span class="flow-tip-country">'+c+'</span><span class="flow-tip-num">'+n+'<span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.55)"> people</span></span><span class="flow-tip-mode">'+M_LABEL[mode]+'</span></div>';
+          tip.style.display = 'block';
+          tip.style.left = (e.originalEvent.clientX+16)+'px';
+          tip.style.top  = (e.originalEvent.clientY-8)+'px';
+        });
+        hit.on('mousemove', e => {
+          tip.style.left = (e.originalEvent.clientX+16)+'px';
+          tip.style.top  = (e.originalEvent.clientY-8)+'px';
+        });
+        hit.on('mouseout', () => {
+          line.setStyle({ color:col, weight:w, opacity:0.65 });
+          tip.style.display = 'none';
+        });
+
+        line.addTo(modeLayers[mode]);
+        hit.addTo(modeLayers[mode]);
+      });
+    });
+  }
+
+  drawLines();
+  map.on('zoomend', drawLines);
+
+  // Country name labels (only countries in TRAVEL data)
+  const allTravelCountries = new Set(Object.values(TRAVEL).flat().map(x=>x.c));
+  Object.entries(LATLNG).forEach(([name, ll]) => {
+    if (!allTravelCountries.has(name)) return;
+    L.marker(ll, {
+      icon: L.divIcon({
+        className: '',
+        html: '<span style="font:600 11px/1 \'Fira Sans\',sans-serif;color:#334155;white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;">'+name+'</span>',
+        iconAnchor: [0, 6],
+      }),
+      interactive: false,
+    }).addTo(map);
+  });
+
+  // De Hoof marker
+  L.circleMarker(DH, { radius:9, fillColor:'#1e3a8a', color:'#fff', weight:2.5, fillOpacity:1 })
+    .bindTooltip('<strong>De Hoof</strong><br>Horst aan de Maas, NL', { permanent:false, direction:'right' })
+    .addTo(map);
+
+  document.querySelectorAll('#flow-filter-btns .chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#flow-filter-btns .chip').forEach(b => {
+        b.classList.remove('active'); b.setAttribute('aria-pressed','false');
+      });
+      btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+      const sel = btn.dataset.mode;
+      Object.entries(modeLayers).forEach(([m,g]) => {
+        if (sel==='all' || sel===m) { if (!map.hasLayer(g)) map.addLayer(g); }
+        else { if (map.hasLayer(g)) map.removeLayer(g); }
+      });
+    });
+  });
+}
+
+/* ═══════════════════════════════════
+   VENUE FLOW MAPS
+═══════════════════════════════════ */
+let _worldTopoCache = null;
+function getWorldTopo() {
+  if (_worldTopoCache) return Promise.resolve(_worldTopoCache);
+  return fetch('https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json')
+    .then(r => r.json())
+    .then(d => { _worldTopoCache = d; return d; });
+}
+
+function buildOneFlowMap({ containerId, dest, travelData, filterBtnId, destLabel, destSubLabel, center, zoom }) {
+  const mapEl = document.getElementById(containerId);
+  if (!mapEl || mapEl._leaflet_id) return;
+  mapEl.style.height = '380px';
+
+  const map = L.map(mapEl, { center, zoom, zoomControl:true, attributionControl:false });
+  map.getContainer().style.background = '#c9dce8';
+
+  map.createPane('countries');
+  map.getPane('countries').style.zIndex = 250;
+  map.getPane('countries').style.pointerEvents = 'none';
+
+  getWorldTopo().then(world => {
+    L.geoJSON(topojson.feature(world, world.objects.countries), {
+      pane: 'countries',
+      style: { fillColor:'#dce8f0', fillOpacity:1, color:'#8aafc0', weight:0.8 },
+      interactive: false,
+    }).addTo(map);
+  });
+
+  const LATLNG = {
+    'Germany':        [51.2,  10.5],
+    'United Kingdom': [54.5,  -2.5],
+    'Netherlands':    [52.2,   5.3],
+    'France':         [46.6,   2.4],
+    'Spain':          [40.4,  -3.7],
+    'Italy':          [42.5,  12.5],
+    'Poland':         [52.1,  19.4],
+    'Belgium':        [50.5,   4.5],
+    'Switzerland':    [46.8,   8.2],
+    'Ireland':        [53.2,  -8.2],
+    'Latvia':         [56.9,  24.6],
+    'Luxembourg':     [49.8,   6.1],
+    'Serbia':         [44.0,  21.0],
+    'Lithuania':      [55.2,  24.0],
+    'Greece':         [39.1,  22.0],
+    'Finland':        [64.0,  26.0],
+    'Romania':        [45.9,  24.9],
+    'Austria':        [47.5,  14.5],
+    'Portugal':       [39.4,  -8.2],
+    'Slovakia':       [48.7,  19.7],
+    'Türkiye':        [39.0,  35.0],
+    'Norway':         [60.5,   8.5],
+    'Sweden':         [59.3,  17.5],
+    'Israel':         [31.5,  35.0],
+  };
+
+  const COLORS    = { plane:'#3b82f6', train:'#10b981', car:'#f59e0b' };
+  const H_COLORS  = { plane:'#60a5fa', train:'#34d399', car:'#fbbf24' };
+  const M_LABEL   = { plane:'✈ Fly', train:'🚆 Train', car:'🚗 Car/Drive' };
+  const MODE_ORDER = { plane:0, train:1, car:2 };
+  const CURVE_K   = 0.2;
+  const LINE_GAP_PX = 8;
+  const calcW = n => Math.pow(n, 0.6);
+
+  function bezierPts(from, to, k, steps=32) {
+    const [lat1,lng1]=from, [lat2,lng2]=to;
+    const mx=(lng1+lng2)/2, my=(lat1+lat2)/2;
+    const dx=lng2-lng1, dy=lat2-lat1;
+    const len=Math.sqrt(dx*dx+dy*dy)||1;
+    const cx=mx-dy/len*len*k, cy=my+dx/len*len*k;
+    const pts=[];
+    for(let i=0;i<=steps;i++){
+      const t=i/steps,u=1-t;
+      pts.push([u*u*lat1+2*u*t*cy+t*t*lat2, u*u*lng1+2*u*t*cx+t*t*lng2]);
+    }
+    return pts;
+  }
+
+  // Reuse shared tooltip
+  let tip = document.getElementById('flow-svgtip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.id = 'flow-svgtip'; tip.className = 'flow-tooltip';
+    tip.style.cssText = 'position:fixed;pointer-events:none;display:none;z-index:9999;';
+    document.body.appendChild(tip);
+  }
+
+  const modeLayers = {};
+  ['plane','train','car'].forEach(m => { modeLayers[m] = L.layerGroup().addTo(map); });
+
+  const byCountry = {};
+  Object.entries(travelData).forEach(([mode, list]) => {
+    list.forEach(({c, n}) => {
+      if (!byCountry[c]) byCountry[c] = [];
+      byCountry[c].push({mode, n});
+    });
+  });
+  Object.values(byCountry).forEach(arr => arr.sort((a,b) => MODE_ORDER[a.mode]-MODE_ORDER[b.mode]));
+
+  function drawLines() {
+    Object.values(modeLayers).forEach(g => g.clearLayers());
+    Object.entries(byCountry).forEach(([c, modes]) => {
+      const from = LATLNG[c]; if (!from) return;
+      const count = modes.length;
+      const fromPx = map.latLngToLayerPoint(L.latLng(from));
+      const toPx   = map.latLngToLayerPoint(L.latLng(dest));
+      const dx=toPx.x-fromPx.x, dy=toPx.y-fromPx.y;
+      const len=Math.sqrt(dx*dx+dy*dy)||1;
+      const perpX=-dy/len, perpY=dx/len;
+
+      modes.forEach(({mode, n}, i) => {
+        const col=COLORS[mode], hcol=H_COLORS[mode];
+        const w=calcW(n);
+        const offsetIdx=i-(count-1)/2;
+        const oFromPx=L.point(fromPx.x+perpX*LINE_GAP_PX*offsetIdx, fromPx.y+perpY*LINE_GAP_PX*offsetIdx);
+        const oFrom=map.layerPointToLatLng(oFromPx);
+        const pts=bezierPts([oFrom.lat,oFrom.lng], dest, CURVE_K);
+        const line=L.polyline(pts,{color:col,weight:w,opacity:0.65,smoothFactor:1});
+        const hit =L.polyline(pts,{color:'transparent',weight:Math.max(w+10,18),opacity:0});
+
+        hit.on('mouseover', e => {
+          line.setStyle({color:hcol,weight:w+4,opacity:1});
+          tip.innerHTML='<div class="flow-tip"><span class="flow-tip-country">'+c+'</span><span class="flow-tip-num">'+n+'<span style="font-size:11px;font-weight:400;color:rgba(255,255,255,.55)"> people</span></span><span class="flow-tip-mode">'+M_LABEL[mode]+'</span></div>';
+          tip.style.display='block';
+          tip.style.left=(e.originalEvent.clientX+16)+'px';
+          tip.style.top=(e.originalEvent.clientY-8)+'px';
+        });
+        hit.on('mousemove', e => {
+          tip.style.left=(e.originalEvent.clientX+16)+'px';
+          tip.style.top=(e.originalEvent.clientY-8)+'px';
+        });
+        hit.on('mouseout', () => {
+          line.setStyle({color:col,weight:w,opacity:0.65});
+          tip.style.display='none';
+        });
+
+        line.addTo(modeLayers[mode]);
+        hit.addTo(modeLayers[mode]);
+      });
+    });
+  }
+
+  drawLines();
+  map.on('zoomend', drawLines);
+
+  // Country labels for countries in this dataset
+  const travelCountries = new Set(Object.values(travelData).flat().map(x=>x.c));
+  Object.entries(LATLNG).forEach(([name, ll]) => {
+    if (!travelCountries.has(name)) return;
+    L.marker(ll, {
+      icon: L.divIcon({
+        className:'',
+        html:'<span style="font:600 11px/1 \'Fira Sans\',sans-serif;color:#334155;white-space:nowrap;text-shadow:0 0 3px #fff,0 0 3px #fff,0 0 3px #fff;">'+name+'</span>',
+        iconAnchor:[0,6],
+      }),
+      interactive:false,
+    }).addTo(map);
+  });
+
+  // Destination marker
+  L.circleMarker(dest, {radius:9,fillColor:'#1e3a8a',color:'#fff',weight:2.5,fillOpacity:1})
+    .bindTooltip('<strong>'+destLabel+'</strong><br>'+destSubLabel, {permanent:false,direction:'right'})
+    .addTo(map);
+
+  // Filter chips
+  document.querySelectorAll('#'+filterBtnId+' .chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#'+filterBtnId+' .chip').forEach(b => {
+        b.classList.remove('active'); b.setAttribute('aria-pressed','false');
+      });
+      btn.classList.add('active'); btn.setAttribute('aria-pressed','true');
+      const sel=btn.dataset.mode;
+      Object.entries(modeLayers).forEach(([m,g]) => {
+        if (sel==='all'||sel===m) { if (!map.hasLayer(g)) map.addLayer(g); }
+        else { if (map.hasLayer(g)) map.removeLayer(g); }
+      });
+    });
+  });
+}
+
+function buildVenueMaps() {
+  const DH_TRAVEL = {
+    plane: [
+      {c:'United Kingdom',n:67},{c:'Poland',n:19},{c:'Spain',n:16},{c:'Italy',n:14},
+      {c:'Latvia',n:7},{c:'Serbia',n:4},{c:'Lithuania',n:4},{c:'Greece',n:3},
+      {c:'Portugal',n:2},{c:'Finland',n:1},{c:'Slovakia',n:1},
+      {c:'Norway',n:1},{c:'Switzerland',n:1},{c:'Ireland',n:1},{c:'Luxembourg',n:1},
+    ],
+    train: [
+      {c:'Germany',n:10},{c:'Netherlands',n:6},{c:'United Kingdom',n:5},
+      {c:'Spain',n:2},{c:'France',n:1},{c:'Greece',n:1},{c:'Ireland',n:1},
+    ],
+    car: [
+      {c:'Germany',n:108},{c:'Netherlands',n:39},{c:'United Kingdom',n:32},
+      {c:'France',n:26},{c:'Belgium',n:17},{c:'Switzerland',n:13},{c:'Ireland',n:8},
+      {c:'Spain',n:8},{c:'Italy',n:6},{c:'Luxembourg',n:6},
+      {c:'Romania',n:3},{c:'Finland',n:2},
+      {c:'Austria',n:1},{c:'Lithuania',n:1},{c:'Serbia',n:1},{c:'Sweden',n:1},{c:'Türkiye',n:1},
+    ],
+  };
+
+  const FIESCH_TRAVEL = {
+    plane: [
+      {c:'United Kingdom',n:107},{c:'Netherlands',n:47},{c:'Spain',n:26},
+      {c:'Germany',n:60},{c:'Poland',n:20},{c:'Ireland',n:10},
+      {c:'Latvia',n:7},{c:'Serbia',n:6},{c:'Lithuania',n:5},
+      {c:'Greece',n:4},{c:'Finland',n:3},{c:'Israel',n:3},
+      {c:'Romania',n:3},{c:'Portugal',n:2},{c:'Norway',n:1},
+      {c:'Sweden',n:1},{c:'Türkiye',n:1},
+    ],
+    train: [
+      {c:'France',n:40},{c:'Italy',n:22},{c:'Belgium',n:17},
+      {c:'Switzerland',n:16},{c:'Luxembourg',n:7},
+    ],
+    car: [
+      {c:'Germany',n:82},{c:'Austria',n:2},{c:'Slovakia',n:1},
+    ],
+  };
+
+  buildOneFlowMap({
+    containerId:'map-dehoof-venue', dest:[51.456,5.960],
+    travelData:DH_TRAVEL, filterBtnId:'flow-venue-2026',
+    destLabel:'De Hoof', destSubLabel:'Horst aan de Maas, NL',
+    center:[52,10], zoom:4,
+  });
+
+  buildOneFlowMap({
+    containerId:'map-fiesch-venue', dest:[46.3907,8.1295],
+    travelData:FIESCH_TRAVEL, filterBtnId:'flow-venue-2028',
+    destLabel:'Sport Resort Fiesch', destSubLabel:'CH-3984 Fiesch',
+    center:[50,12], zoom:4,
+  });
+
+  buildCostCompareChart();
+}
+
+function buildCostCompareChart() {
+  const countries  = ['Germany','United Kingdom','Netherlands','France','Spain','Italy','Poland','Belgium','Switzerland','Ireland'];
+  const attendees  = [142,107,47,40,26,22,20,17,16,10];
+
+  // De Hoof 2028: registration €185 + estimated return travel
+  const DH_TRAV = {
+    'Germany':45,'United Kingdom':95,'Netherlands':10,'France':70,
+    'Spain':90,'Italy':75,'Poland':85,'Belgium':25,'Switzerland':55,'Ireland':85,
+  };
+  // Fiesch 2028: registration (€180 or €245) + travel from TRAIN/FLY tables
+  // Germany avg: 60 fly (90+60=150) + 82 drive (80) → 110
+  const F_TRAV = {
+    'Germany':110,'United Kingdom':155,'Netherlands':140,'France':155,
+    'Spain':145,'Italy':90,'Poland':170,'Belgium':185,'Switzerland':95,'Ireland':170,
+  };
+
+  const DH2=185, F2=180, F3=245;
+
+  const dhAll  = countries.map(c => DH2 + DH_TRAV[c]);
+  const fi2All = countries.map(c => F2  + F_TRAV[c]);
+  const fi3All = countries.map(c => F3  + F_TRAV[c]);
+
+  const ctx = document.getElementById('costCompareChart').getContext('2d');
+  new Chart(ctx, {
+    type:'bar',
+    data:{
+      labels: countries,
+      datasets:[
+        {
+          label:'De Hoof 2028 (est. €185 reg)',
+          data: dhAll,
+          backgroundColor:'rgba(217,119,6,0.75)',
+          borderColor:'#d97706', borderWidth:1, borderRadius:3,
+        },
+        {
+          label:'Fiesch 2-night (€180 reg)',
+          data: fi2All,
+          backgroundColor:'rgba(14,165,233,0.75)',
+          borderColor:'#0ea5e9', borderWidth:1, borderRadius:3,
+        },
+        {
+          label:'Fiesch 3-night (€245 reg)',
+          data: fi3All,
+          backgroundColor:'rgba(30,58,138,0.75)',
+          borderColor:'#1e3a8a', borderWidth:1, borderRadius:3,
+        },
+      ],
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{
+        legend:{ position:'top', labels:{ font:{ family:"'Fira Sans', sans-serif", size:12 } } },
+        tooltip:{
+          callbacks:{
+            title: ctx => {
+              const i=ctx[0].dataIndex;
+              return countries[i]+' ('+attendees[i]+' people)';
+            },
+            label: ctx => {
+              const c=countries[ctx.dataIndex];
+              const trav = ctx.datasetIndex===0 ? DH_TRAV[c] : F_TRAV[c];
+              const reg  = [DH2,F2,F3][ctx.datasetIndex];
+              return ` ${ctx.dataset.label}: €${ctx.raw}  (reg €${reg} + travel €${trav})`;
+            },
+            afterBody: ctx => {
+              const i=ctx[0].dataIndex;
+              const c=countries[i];
+              const diff2=fi2All[i]-dhAll[i], diff3=fi3All[i]-dhAll[i];
+              return ['──────────────','vs De Hoof:  Fiesch 2-night '+( diff2>=0 ? '+' : '')+diff2+'€ · Fiesch 3-night '+(diff3>=0?'+':'')+diff3+'€'];
+            },
+          },
+          mode:'index',
+          intersect:false,
+        },
+      },
+      scales:{
+        x:{
+          grid:{ display:false },
+          ticks:{ font:{ family:"'Fira Sans', sans-serif", size:11 } },
+        },
+        y:{
+          min:150,
+          title:{ display:true, text:'All-in cost per person (€)', font:{ family:"'Fira Sans', sans-serif", size:11 } },
+          ticks:{ callback: v=>'€'+v, font:{ family:"'Fira Code', monospace", size:11 } },
+          grid:{ color:'rgba(0,0,0,0.06)' },
+        },
+      },
+    },
+  });
+}
+
+/* ═══════════════════════════════════
    INIT
 ═══════════════════════════════════ */
+document.querySelectorAll('.travel-tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.travel-tab-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-selected','false'); });
+    document.querySelectorAll('.travel-tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active'); btn.setAttribute('aria-selected','true');
+    document.getElementById('ttab-'+btn.dataset.ttab).classList.add('active');
+  });
+});
+
 renderDemo();
+buildFlowMap();
 </script>
 </body>
 </html>
