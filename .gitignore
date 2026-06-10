@@ -1,0 +1,7 @@
+# Raw source data — not for public deployment
+data.json
+seuc26.csv
+report.txt
+
+# Claude workspace
+.claude/
